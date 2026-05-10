@@ -28,6 +28,7 @@ async function initFirebase() {
 }
 
 const els = {
+  adminHeader: document.getElementById('adminHeader'),
   loginPanel: document.getElementById('loginPanel'),
   adminPanel: document.getElementById('adminPanel'),
   loginForm: document.getElementById('loginForm'),
@@ -363,6 +364,7 @@ async function boot() {
 
     onAuthStateChanged(auth, async user => {
       if (user) {
+        els.adminHeader.hidden = false;
         els.loginPanel.hidden = true;
         els.adminPanel.hidden = false;
         els.userLabel.textContent = `登入中：${user.email}`;
@@ -374,6 +376,7 @@ async function boot() {
           status(`讀取失敗：${error.message}`, true);
         }
       } else {
+        els.adminHeader.hidden = true;
         els.loginPanel.hidden = false;
         els.adminPanel.hidden = true;
       }

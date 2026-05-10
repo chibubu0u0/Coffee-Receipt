@@ -36,3 +36,11 @@ button.danger { background: #7b2e22; border-color: #7b2e22; }
   .form-grid, .scores-grid { grid-template-columns: 1fr; }
   .editor-top { display: block; }
 }
+
+/* Login-only screen: before authentication, hide all admin context and center the login card. */
+body:has(#loginPanel:not([hidden])) .site-header { display: none; }
+body:has(#loginPanel:not([hidden])) main { min-height: 100vh; display: grid; place-items: center; }
+.login-only { width: min(520px, calc(100vw - 32px)); margin: 0 auto; }
+.login-only h2 { text-align: center; margin-bottom: 24px; }
+.login-only .login-form button { width: 100%; margin-top: 8px; }
+.login-only .message { text-align: center; min-height: 1.4em; }

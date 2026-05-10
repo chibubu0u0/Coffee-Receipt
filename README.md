@@ -3,7 +3,7 @@
 這是 Firebase Firestore 版咖啡豆資料卡。
 
 - `/`：前台，讀取 Firestore `coffee_beans` 裡 `published = true` 的資料
-- `/admin`：後台，使用 Firebase Authentication 登入後新增 / 編輯 / 刪除咖啡豆
+- `/admin`：登入前只顯示登入畫面；登入後才顯示後台管理介面，可新增 / 編輯 / 刪除咖啡豆
 - 不需要 Supabase
 - 不需要每次更新資料都 redeploy
 

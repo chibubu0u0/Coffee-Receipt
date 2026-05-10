@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/admin/admin.css" />
   </head>
   <body>
-    <header class="site-header admin-header">
+    <header id="adminHeader" class="site-header admin-header" hidden>
       <div>
         <p class="eyebrow">Firebase Admin</p>
         <h1>咖啡豆後台</h1>
@@ -18,9 +18,8 @@
     </header>
 
     <main>
-      <section id="loginPanel" class="card login-panel">
-        <h2>登入後台</h2>
-        <p class="muted">請使用 Firebase Authentication 裡建立的管理者帳號。</p>
+      <section id="loginPanel" class="card login-panel login-only">
+        <h2>登入</h2>
         <form id="loginForm" class="login-form">
           <label>Email<input id="email" type="email" autocomplete="email" required /></label>
           <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
