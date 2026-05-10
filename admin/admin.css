@@ -44,3 +44,15 @@ body:has(#loginPanel:not([hidden])) main { min-height: 100vh; display: grid; pla
 .login-only h2 { text-align: center; margin-bottom: 24px; }
 .login-only .login-form button { width: 100%; margin-top: 8px; }
 .login-only .message { text-align: center; min-height: 1.4em; }
+
+
+/* Robust auth visibility lock. This prevents lower admin sections from showing before login. */
+[hidden] { display: none !important; }
+body.admin-auth-locked #adminHeader,
+body.admin-auth-locked #adminPanel { display: none !important; }
+body.admin-auth-locked #loginPanel { display: grid !important; }
+body.admin-authenticated #loginPanel { display: none !important; }
+body.admin-authenticated #adminPanel { display: grid !important; }
+body.admin-authenticated #adminHeader { display: flex !important; }
+body.admin-auth-locked main { min-height: 100vh; display: grid; place-items: center; }
+body.admin-authenticated main { min-height: auto; display: block; }

@@ -1,3 +1,14 @@
+# Coffee Origin Card — Firebase Private Config v4
+
+此版本修正 `/admin` 登入前顯示邏輯：
+
+- 未登入時，只顯示 Email / Password / 登入按鈕。
+- 未登入時，後台標題、回前台、咖啡豆表單、CSV 匯入全部隱藏。
+- 登入成功後，才顯示完整管理介面。
+- 修正 CSS `hidden` 被覆蓋造成未登入仍顯示管理區塊的問題。
+
+部署方式與前一版相同：上傳到 GitHub，Vercel 重新 Deploy；原本的 Firebase Environment Variables 不需要重填。
+
 # Coffee Origin Card — Firebase Version
 
 這是 Firebase Firestore 版咖啡豆資料卡。

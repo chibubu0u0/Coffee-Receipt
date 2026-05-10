@@ -364,6 +364,8 @@ async function boot() {
 
     onAuthStateChanged(auth, async user => {
       if (user) {
+        document.body.classList.remove('admin-auth-locked');
+        document.body.classList.add('admin-authenticated');
         els.adminHeader.hidden = false;
         els.loginPanel.hidden = true;
         els.adminPanel.hidden = false;
@@ -376,6 +378,8 @@ async function boot() {
           status(`讀取失敗：${error.message}`, true);
         }
       } else {
+        document.body.classList.remove('admin-authenticated');
+        document.body.classList.add('admin-auth-locked');
         els.adminHeader.hidden = true;
         els.loginPanel.hidden = false;
         els.adminPanel.hidden = true;
