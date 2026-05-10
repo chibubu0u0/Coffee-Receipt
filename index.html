@@ -3,114 +3,132 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Coffee origin card with verified origin, flavor, brewing, and source data." />
     <title>Coffee Origin Card</title>
-    <link rel="preconnect" href="https://unpkg.com" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQAb6SSqGg1NyVPBKgyyN4tZt8PzN6w=" crossorigin="" />
-    <link rel="stylesheet" href="/styles.css" />
+    <meta name="description" content="Coffee bean origin, flavor, brewing and story card." />
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <header class="site-header">
       <div>
         <p class="eyebrow">Coffee Origin Archive</p>
         <h1>咖啡豆資料卡</h1>
-        <p class="lead">用產地、風味、沖煮建議與資料來源，建立一張可被掃描收藏的咖啡豆卡片。</p>
+        <p class="subhead">用產地、風味、杯測與資料來源，建立可以被查證的咖啡豆知識卡。</p>
       </div>
       <a class="admin-link" href="/admin">Admin</a>
     </header>
 
-    <main class="layout">
-      <aside class="bean-list-panel">
-        <div class="panel-title-row">
-          <h2>Beans</h2>
-          <span id="beanCount" class="count-pill">0</span>
-        </div>
-        <div id="beanList" class="bean-list" aria-label="Coffee bean list"></div>
-      </aside>
+    <main>
+      <section class="toolbar card">
+        <label for="beanSelect">選擇咖啡豆</label>
+        <select id="beanSelect"></select>
+        <span id="statusText" class="muted">讀取資料中…</span>
+      </section>
 
-      <section class="card-shell" aria-live="polite">
-        <div id="emptyState" class="empty-state" hidden>
-          <h2>找不到咖啡豆資料</h2>
-          <p>請確認 <code>data/beans.json</code> 內至少有一筆 <code>published: true</code> 的資料。</p>
-        </div>
+      <section id="emptyState" class="card empty-state" hidden>
+        <h2>目前還沒有公開的咖啡豆資料</h2>
+        <p>請到 <a href="/admin">/admin</a> 登入後新增資料，並將 published 設為 true。</p>
+      </section>
 
-        <article id="beanCard" class="bean-card" hidden>
-          <section class="hero-card">
+      <section id="beanCard" class="bean-grid" hidden>
+        <article class="hero-card card">
+          <div class="bean-heading">
             <div>
-              <p class="eyebrow" id="competitionLabel">Origin Card</p>
-              <h2 id="beanName"></h2>
-              <p id="beanSubtitle" class="subtitle"></p>
-              <div class="meta-grid compact" id="heroMeta"></div>
+              <p class="eyebrow" id="beanCategory">Origin Card</p>
+              <h2 id="beanName">Coffee Bean</h2>
+              <p id="beanSubtitle" class="subhead"></p>
             </div>
-            <div class="qr-box">
-              <div id="qrCode" class="qr-code"></div>
-              <p>Scan for this card</p>
+            <div class="score-pill" id="scorePill" hidden>
+              <span id="cuppingScore">--</span>
+              <small>Cupping</small>
             </div>
-          </section>
+          </div>
 
-          <section class="two-column">
-            <div class="panel map-panel">
-              <div class="section-heading">
-                <p class="eyebrow">Origin Map</p>
-                <h3 id="originTitle"></h3>
-              </div>
-              <div id="map" class="map"></div>
-              <p id="mapAccuracy" class="small-note"></p>
-              <p id="originNotes" class="body-copy"></p>
-            </div>
+          <div class="chips" id="flavorChips"></div>
 
-            <div class="panel">
-              <div class="section-heading">
-                <p class="eyebrow">Coffee Data</p>
-                <h3>基本資料</h3>
-              </div>
-              <dl id="coffeeFacts" class="fact-list"></dl>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="section-heading">
-              <p class="eyebrow">Flavor Profile</p>
-              <h3>風味與感官數據</h3>
-            </div>
-            <div id="flavorTags" class="tag-row"></div>
-            <p id="flavorDescription" class="body-copy"></p>
-            <div class="flavor-grid">
-              <dl id="flavorFacts" class="fact-list"></dl>
-              <div id="scoreBars" class="score-bars"></div>
-            </div>
-          </section>
-
-          <section class="two-column">
-            <div class="panel">
-              <div class="section-heading">
-                <p class="eyebrow">Brew Guide</p>
-                <h3>沖煮建議</h3>
-              </div>
-              <dl id="brewFacts" class="fact-list"></dl>
-            </div>
-            <div class="panel">
-              <div class="section-heading">
-                <p class="eyebrow">Story & Traceability</p>
-                <h3>背景故事</h3>
-              </div>
-              <div id="storyBlocks" class="story-blocks"></div>
-            </div>
-          </section>
-
-          <section class="panel source-panel">
-            <div class="section-heading">
-              <p class="eyebrow">Sources</p>
-              <h3>資料來源與推導說明</h3>
-            </div>
-            <dl id="sourceFacts" class="fact-list"></dl>
-          </section>
+          <dl class="meta-grid">
+            <div><dt>國家</dt><dd id="country">—</dd></div>
+            <div><dt>產區</dt><dd id="region">—</dd></div>
+            <div><dt>莊園 / 合作社</dt><dd id="farm">—</dd></div>
+            <div><dt>生產者</dt><dd id="producer">—</dd></div>
+            <div><dt>品種</dt><dd id="variety">—</dd></div>
+            <div><dt>處理法</dt><dd id="process">—</dd></div>
+            <div><dt>海拔</dt><dd id="altitude">—</dd></div>
+            <div><dt>烘焙度</dt><dd id="roastLevel">—</dd></div>
+          </dl>
         </article>
+
+        <aside class="card map-card">
+          <div class="section-title">
+            <p class="eyebrow">Origin Map</p>
+            <h3>產地地圖</h3>
+          </div>
+          <div id="mapWrap" class="map-wrap"></div>
+          <p id="mapCaption" class="muted"></p>
+        </aside>
+
+        <article class="card">
+          <div class="section-title">
+            <p class="eyebrow">Flavor</p>
+            <h3>風味資訊</h3>
+          </div>
+          <p id="officialFlavor" class="body-text"></p>
+          <div class="flavor-bars" id="flavorBars"></div>
+        </article>
+
+        <article class="card">
+          <div class="section-title">
+            <p class="eyebrow">Brew Guide</p>
+            <h3>沖煮建議</h3>
+          </div>
+          <dl class="list-grid">
+            <div><dt>沖煮法</dt><dd id="brewMethod">—</dd></div>
+            <div><dt>粉水比</dt><dd id="brewRatio">—</dd></div>
+            <div><dt>水溫</dt><dd id="brewTemp">—</dd></div>
+            <div><dt>研磨度</dt><dd id="grind">—</dd></div>
+            <div><dt>萃取時間</dt><dd id="brewTime">—</dd></div>
+          </dl>
+        </article>
+
+        <article class="card wide-card">
+          <div class="section-title">
+            <p class="eyebrow">Story</p>
+            <h3>背景故事與資料來源</h3>
+          </div>
+          <div class="story-blocks">
+            <section>
+              <h4>產地背景</h4>
+              <p id="storyOrigin">尚未填寫。</p>
+            </section>
+            <section>
+              <h4>生產者 / 莊園</h4>
+              <p id="storyProducer">尚未填寫。</p>
+            </section>
+            <section>
+              <h4>處理法說明</h4>
+              <p id="processNote">尚未填寫。</p>
+            </section>
+          </div>
+          <div class="source-box">
+            <strong>資料來源</strong>
+            <p id="sourceText">尚未填寫。</p>
+          </div>
+        </article>
+
+        <aside class="card qr-card">
+          <div class="section-title">
+            <p class="eyebrow">Share</p>
+            <h3>QR Code</h3>
+          </div>
+          <img id="qrImage" alt="QR Code" />
+          <a id="shareLink" href="#">開啟此資料卡</a>
+        </aside>
       </section>
     </main>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="/app.js"></script>
+    <footer>
+      <p>Powered by Firebase Firestore. 資料來源與推導內容請分開標示，避免無中生有。</p>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

@@ -1,246 +1,183 @@
-const $ = (selector) => document.querySelector(selector);
-const toArray = (value) => Array.isArray(value) ? value : String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
-const text = (value, fallback = '未提供') => value || fallback;
+import { firebaseConfig, collectionName } from './firebase-config.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const els = {
+  select: document.getElementById('beanSelect'),
+  status: document.getElementById('statusText'),
+  empty: document.getElementById('emptyState'),
+  card: document.getElementById('beanCard'),
+  beanCategory: document.getElementById('beanCategory'),
+  name: document.getElementById('beanName'),
+  subtitle: document.getElementById('beanSubtitle'),
+  scorePill: document.getElementById('scorePill'),
+  score: document.getElementById('cuppingScore'),
+  chips: document.getElementById('flavorChips'),
+  country: document.getElementById('country'),
+  region: document.getElementById('region'),
+  farm: document.getElementById('farm'),
+  producer: document.getElementById('producer'),
+  variety: document.getElementById('variety'),
+  process: document.getElementById('process'),
+  altitude: document.getElementById('altitude'),
+  roastLevel: document.getElementById('roastLevel'),
+  mapWrap: document.getElementById('mapWrap'),
+  mapCaption: document.getElementById('mapCaption'),
+  officialFlavor: document.getElementById('officialFlavor'),
+  flavorBars: document.getElementById('flavorBars'),
+  brewMethod: document.getElementById('brewMethod'),
+  brewRatio: document.getElementById('brewRatio'),
+  brewTemp: document.getElementById('brewTemp'),
+  grind: document.getElementById('grind'),
+  brewTime: document.getElementById('brewTime'),
+  storyOrigin: document.getElementById('storyOrigin'),
+  storyProducer: document.getElementById('storyProducer'),
+  processNote: document.getElementById('processNote'),
+  sourceText: document.getElementById('sourceText'),
+  qrImage: document.getElementById('qrImage'),
+  shareLink: document.getElementById('shareLink')
+};
 
 let beans = [];
-let currentBean = null;
-let mapInstance = null;
-let mapMarker = null;
 
-const accuracyLabels = {
-  country: '國家層級',
-  region: '產區層級',
-  subregion: '子產區層級',
-  farm: '莊園層級',
-  unknown: '未確認'
-};
-
-const scoreLabels = {
-  acidity: '酸質',
-  sweetness: '甜感',
-  bitterness: '苦感',
-  body: '醇厚度',
-  aroma: '香氣強度',
-  aftertaste: '餘韻長度',
-  fermentation: '發酵感',
-  cleanCup: '乾淨度'
-};
-
-async function init() {
-  try {
-    const response = await fetch('/data/beans.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error('Cannot load beans.json');
-    beans = (await response.json()).filter((bean) => bean.published !== false);
-    renderBeanList();
-    const slug = new URLSearchParams(window.location.search).get('bean');
-    const initialBean = beans.find((bean) => bean.slug === slug) || beans[0];
-    if (initialBean) renderBean(initialBean);
-    else showEmptyState();
-  } catch (error) {
-    console.error(error);
-    showEmptyState();
-  }
+function value(v, fallback = '—') {
+  if (v === undefined || v === null || v === '') return fallback;
+  return v;
 }
 
-function showEmptyState() {
-  $('#emptyState').hidden = false;
-  $('#beanCard').hidden = true;
+function toArray(v) {
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string') return v.split(/[|,;\n]/).map(s => s.trim()).filter(Boolean);
+  return [];
 }
 
-function renderBeanList() {
-  $('#beanCount').textContent = beans.length;
-  $('#beanList').innerHTML = beans.map((bean, index) => `
-    <button class="bean-button" data-index="${index}" type="button">
-      <strong>${escapeHtml(bean.name)}</strong>
-      <span>${escapeHtml([bean.origin?.country, bean.origin?.region, bean.coffee?.process].filter(Boolean).join(' · '))}</span>
-    </button>
-  `).join('');
-  $('#beanList').addEventListener('click', (event) => {
-    const button = event.target.closest('.bean-button');
-    if (!button) return;
-    const bean = beans[Number(button.dataset.index)];
-    renderBean(bean, true);
-  });
+function scoreValue(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(5, n));
 }
 
-function renderBean(bean, pushState = false) {
-  currentBean = bean;
-  $('#emptyState').hidden = true;
-  $('#beanCard').hidden = false;
-
-  document.title = `${bean.name}｜Coffee Origin Card`;
-  if (pushState) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('bean', bean.slug);
-    window.history.pushState({}, '', url);
-  }
-
-  document.querySelectorAll('.bean-button').forEach((button, index) => {
-    button.classList.toggle('active', beans[index].slug === bean.slug);
-  });
-
-  $('#competitionLabel').textContent = bean.auction?.competition || 'Origin Card';
-  $('#beanName').textContent = bean.name;
-  $('#beanSubtitle').textContent = bean.subtitle || '';
-
-  renderMeta('#heroMeta', [
-    ['Country', bean.origin?.country],
-    ['Region', bean.origin?.region],
-    ['Process', bean.coffee?.process],
-    ['Variety', bean.coffee?.variety],
-    ['Score', bean.auction?.cuppingScore],
-    ['Map', accuracyLabels[bean.origin?.mapAccuracy] || bean.origin?.mapAccuracy]
-  ]);
-
-  $('#originTitle').textContent = [bean.origin?.farm, bean.origin?.region, bean.origin?.country].filter(Boolean).join(', ');
-  $('#originNotes').textContent = bean.origin?.notes || '';
-  $('#mapAccuracy').textContent = `Map accuracy｜${accuracyLabels[bean.origin?.mapAccuracy] || '未確認'}${bean.sources?.officialSourceName ? `　Source｜${bean.sources.officialSourceName}` : ''}`;
-  renderMap(bean);
-  renderQr(bean);
-
-  renderFacts('#coffeeFacts', [
-    ['烘豆品牌 / 店家', bean.roaster],
-    ['莊園 / 合作社', bean.origin?.farm],
-    ['生產者', bean.origin?.producer],
-    ['海拔', bean.origin?.altitude],
-    ['品種', bean.coffee?.variety],
-    ['處理法', bean.coffee?.process],
-    ['烘焙度', bean.coffee?.roastLevel],
-    ['採收年份', bean.coffee?.harvestYear],
-    ['Lot 編號', bean.coffee?.lotNumber || bean.auction?.lotNumber],
-    ['競賽 / 拍賣', bean.auction?.competition],
-    ['類別', bean.auction?.category],
-    ['排名', bean.auction?.rank]
-  ]);
-
-  renderTags('#flavorTags', bean.flavor?.officialNotes || []);
-  $('#flavorDescription').textContent = bean.flavor?.description || '';
-  renderFacts('#flavorFacts', [
-    ['香氣', bean.flavor?.aroma],
-    ['酸質', bean.flavor?.acidity],
-    ['甜感', bean.flavor?.sweetness],
-    ['苦感', bean.flavor?.bitterness],
-    ['醇厚度', bean.flavor?.body],
-    ['餘韻', bean.flavor?.aftertaste]
-  ]);
-  renderScores(bean.flavor?.scores || {});
-
-  renderFacts('#brewFacts', [
-    ['推薦沖煮方式', bean.brew?.method],
-    ['粉水比', bean.brew?.ratio],
-    ['水溫', bean.brew?.waterTemperature],
-    ['研磨度', bean.brew?.grind],
-    ['萃取時間', bean.brew?.time],
-    ['推薦器具', bean.brew?.tools],
-    ['適合飲用方式', bean.brew?.serving]
-  ]);
-
-  renderStory(bean.story || {});
-  renderFacts('#sourceFacts', [
-    ['官方資料來源', sourceLink(bean.sources?.officialSourceName, bean.sources?.officialSourceUrl)],
-    ['杯測 / 品飲來源', bean.sources?.cuppingSource],
-    ['是否包含個人品飲筆記', bean.sources?.personalTasting],
-    ['是否包含 AI 推導內容', bean.sources?.aiDerivedContent],
-    ['最後更新時間', bean.sources?.lastUpdated],
-    ['人格分類依據', bean.personality?.basis]
-  ], true);
-}
-
-function renderMap(bean) {
-  const lat = Number(bean.origin?.latitude);
-  const lng = Number(bean.origin?.longitude);
-  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
-  if (!mapInstance) {
-    mapInstance = L.map('map', { scrollWheelZoom: false, zoomControl: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(mapInstance);
-  }
-  if (!hasCoordinates) {
-    mapInstance.setView([0, 0], 2);
-    if (mapMarker) mapMarker.remove();
-    return;
-  }
-  const zoom = bean.origin?.mapAccuracy === 'farm' ? 12 : bean.origin?.mapAccuracy === 'country' ? 5 : 9;
-  mapInstance.setView([lat, lng], zoom);
-  if (mapMarker) mapMarker.remove();
-  mapMarker = L.marker([lat, lng]).addTo(mapInstance).bindPopup(`<strong>${escapeHtml(bean.name)}</strong><br>${escapeHtml($('#originTitle').textContent)}`);
-  setTimeout(() => mapInstance.invalidateSize(), 120);
-}
-
-function renderQr(bean) {
-  const qrTarget = $('#qrCode');
-  qrTarget.innerHTML = '';
-  const url = new URL(window.location.href);
-  url.searchParams.set('bean', bean.slug);
-  if (window.QRCode) {
-    new QRCode(qrTarget, {
-      text: url.toString(),
-      width: 140,
-      height: 140,
-      colorDark: '#2f241b',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  } else {
-    qrTarget.textContent = url.toString();
-  }
-}
-
-function renderMeta(selector, rows) {
-  const filtered = rows.filter(([, value]) => value);
-  $(selector).innerHTML = filtered.map(([label, value]) => `
-    <div class="meta-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>
-  `).join('');
-}
-
-function renderFacts(selector, rows, allowHtml = false) {
-  const filtered = rows.filter(([, value]) => value !== undefined && value !== null && value !== '');
-  $(selector).innerHTML = filtered.map(([label, value]) => `
-    <div><dt>${escapeHtml(label)}</dt><dd>${allowHtml ? value : escapeHtml(value)}</dd></div>
-  `).join('');
-}
-
-function renderTags(selector, tags) {
-  $(selector).innerHTML = toArray(tags).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
-}
-
-function renderScores(scores) {
-  $('#scoreBars').innerHTML = Object.entries(scoreLabels).map(([key, label]) => {
-    const raw = Number(scores[key] || 0);
-    const score = Math.min(5, Math.max(0, raw));
-    return `
-      <div class="score-item">
-        <div class="score-label"><span>${label}</span><span>${score}/5</span></div>
-        <div class="score-track"><div class="score-fill" style="width: ${(score / 5) * 100}%"></div></div>
-      </div>
-    `;
+function renderBars(bean) {
+  const items = [
+    ['酸質', bean.acidityScore],
+    ['甜感', bean.sweetnessScore],
+    ['苦感', bean.bitternessScore],
+    ['醇厚度', bean.bodyScore],
+    ['香氣', bean.aromaScore],
+    ['餘韻', bean.aftertasteScore],
+    ['發酵感', bean.fermentationScore],
+    ['乾淨度', bean.cleanScore]
+  ];
+  els.flavorBars.innerHTML = items.map(([label, raw]) => {
+    const s = scoreValue(raw);
+    const width = s === null ? 0 : (s / 5) * 100;
+    return `<div class="bar-row"><span>${label}</span><div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div><strong>${s ?? '—'}</strong></div>`;
   }).join('');
 }
 
-function renderStory(story) {
-  const rows = [
-    ['產地背景', story.originBackground],
-    ['莊園 / 生產者故事', story.producerStory],
-    ['處理法說明', story.processingStory],
-    ['系統推導說明', story.systemNote]
-  ].filter(([, value]) => value);
-  $('#storyBlocks').innerHTML = rows.map(([title, body]) => `
-    <div class="story-block"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(body)}</p></div>
-  `).join('');
+function renderMap(bean) {
+  const lat = Number(bean.latitude);
+  const lng = Number(bean.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    els.mapWrap.innerHTML = `<div class="map-placeholder">尚未提供經緯度。<br>可以先用文字標示產區，避免假精準。</div>`;
+    els.mapCaption.textContent = `地圖精準度：${value(bean.mapAccuracy, '未確認')}`;
+    return;
+  }
+  const delta = 0.18;
+  const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join('%2C');
+  const marker = `${lat}%2C${lng}`;
+  els.mapWrap.innerHTML = `<iframe title="Origin map" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}" loading="lazy"></iframe>`;
+  els.mapCaption.textContent = `${value(bean.region)} ${value(bean.country, '')}｜地圖精準度：${value(bean.mapAccuracy, '未確認')}`;
 }
 
-function sourceLink(name, url) {
-  if (!name && !url) return '';
-  if (!url) return escapeHtml(name);
-  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(name || url)}</a>`;
+function beanUrl(bean) {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('bean', bean.slug || bean.id);
+  return url.toString();
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
-  }[char]));
+function renderBean(bean) {
+  if (!bean) return;
+  els.card.hidden = false;
+  els.empty.hidden = true;
+
+  els.beanCategory.textContent = bean.competitionName || bean.category || 'Origin Card';
+  els.name.textContent = value(bean.name, 'Untitled Coffee Bean');
+  els.subtitle.textContent = [bean.country, bean.region, bean.process, bean.variety].filter(Boolean).join(' · ');
+
+  if (bean.cuppingScore !== undefined && bean.cuppingScore !== '') {
+    els.scorePill.hidden = false;
+    els.score.textContent = bean.cuppingScore;
+  } else {
+    els.scorePill.hidden = true;
+  }
+
+  const chips = [...toArray(bean.flavorNotes), ...toArray(bean.tags)].slice(0, 10);
+  els.chips.innerHTML = chips.map(tag => `<span class="chip">${tag}</span>`).join('');
+
+  ['country', 'region', 'farm', 'producer', 'variety', 'process', 'altitude', 'roastLevel'].forEach(key => {
+    els[key].textContent = value(bean[key]);
+  });
+
+  els.officialFlavor.textContent = value(bean.officialFlavor, '尚未填寫官方風味描述。');
+  renderBars(bean);
+  renderMap(bean);
+
+  els.brewMethod.textContent = value(bean.brewMethod);
+  els.brewRatio.textContent = value(bean.brewRatio);
+  els.brewTemp.textContent = value(bean.brewTemp);
+  els.grind.textContent = value(bean.grind);
+  els.brewTime.textContent = value(bean.brewTime);
+
+  els.storyOrigin.textContent = value(bean.storyOrigin, '尚未填寫。');
+  els.storyProducer.textContent = value(bean.storyProducer, '尚未填寫。');
+  els.processNote.textContent = value(bean.processNote, '尚未填寫。');
+
+  const sources = [bean.sourceOfficial, bean.sourceCupping, bean.sourcePersonal].filter(Boolean);
+  els.sourceText.textContent = sources.length ? sources.join('｜') : '尚未填寫。';
+
+  const share = beanUrl(bean);
+  els.qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(share)}`;
+  els.shareLink.href = share;
+  els.shareLink.textContent = share;
 }
 
-init();
+function populateSelect() {
+  els.select.innerHTML = beans.map((bean, index) => `<option value="${index}">${value(bean.name, 'Untitled')}</option>`).join('');
+  els.select.addEventListener('change', () => renderBean(beans[Number(els.select.value)]));
+}
+
+async function loadBeans() {
+  try {
+    const q = query(collection(db, collectionName), where('published', '==', true));
+    const snapshot = await getDocs(q);
+    beans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    beans.sort((a, b) => value(a.name, '').localeCompare(value(b.name, ''), 'zh-Hant'));
+
+    if (!beans.length) {
+      els.status.textContent = '沒有公開資料';
+      els.empty.hidden = false;
+      els.card.hidden = true;
+      return;
+    }
+
+    populateSelect();
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get('bean');
+    const targetIndex = Math.max(0, beans.findIndex(bean => bean.slug === target || bean.id === target));
+    els.select.value = targetIndex;
+    renderBean(beans[targetIndex]);
+    els.status.textContent = `已載入 ${beans.length} 筆公開資料`;
+  } catch (error) {
+    console.error(error);
+    els.status.textContent = '讀取失敗，請確認 Firestore Rules 與 Firebase 設定。';
+    els.empty.hidden = false;
+    els.empty.querySelector('p').textContent = error.message;
+  }
+}
+
+loadBeans();

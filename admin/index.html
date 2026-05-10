@@ -4,185 +4,163 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Coffee Origin Admin</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="./admin.css" />
   </head>
-  <body class="admin-body">
-    <header class="site-header">
+  <body>
+    <header class="site-header admin-header">
       <div>
-        <p class="eyebrow">Static JSON Admin</p>
+        <p class="eyebrow">Firebase Admin</p>
         <h1>咖啡豆後台</h1>
-        <p class="lead">這是免資料庫版本：你可以在這裡新增 / 編輯資料，然後匯出 <code>beans.json</code>，再上傳到 GitHub 的 <code>data/beans.json</code>。</p>
+        <p class="subhead">登入後可直接新增、編輯、刪除 Firestore 裡的咖啡豆資料。更新後前台不需要重新部署。</p>
       </div>
-      <a class="admin-link" href="/">Back to site</a>
+      <a class="admin-link" href="/">回前台</a>
     </header>
 
-    <main class="admin-layout">
-      <aside class="admin-card">
-        <div class="notice">
-          <strong>重要：</strong>靜態網站無法直接寫回 GitHub。這個後台會在你的瀏覽器內編輯資料，按「匯出 beans.json」後，手動覆蓋 GitHub 裡的 <code>data/beans.json</code>。
-        </div>
-
-        <div class="admin-actions">
-          <button class="btn primary" id="newBeanBtn" type="button">新增豆子</button>
-          <button class="btn" id="duplicateBtn" type="button">複製目前資料</button>
-          <button class="btn danger" id="deleteBtn" type="button">刪除</button>
-        </div>
-
-        <div class="admin-actions">
-          <button class="btn" id="exportBtn" type="button">匯出 beans.json</button>
-          <button class="btn" id="copyBtn" type="button">複製 JSON</button>
-          <label class="btn small" for="importInput">匯入 JSON</label>
-          <input id="importInput" class="hidden" type="file" accept="application/json" />
-        </div>
-
-        <h2>資料列表</h2>
-        <div id="adminList" class="admin-list"></div>
-      </aside>
-
-      <section class="admin-card">
-        <form id="editor" class="editor">
-          <fieldset class="fieldset">
-            <legend>Card</legend>
-            <div class="form-grid">
-              <label>Slug<input name="slug" placeholder="example-panama-geisha-2025" /></label>
-              <label>Published
-                <select name="published">
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
-              </label>
-              <label class="full">咖啡豆名稱<input name="name" /></label>
-              <label class="full">副標題<input name="subtitle" /></label>
-              <label>烘豆品牌 / 店家<input name="roaster" /></label>
-              <label>資料最後更新日期<input name="sources.lastUpdated" placeholder="2026-05-10" /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Origin Map</legend>
-            <div class="form-grid three">
-              <label>國家<input name="origin.country" /></label>
-              <label>產區<input name="origin.region" /></label>
-              <label>子產區<input name="origin.subregion" /></label>
-              <label>莊園 / 合作社<input name="origin.farm" /></label>
-              <label>生產者<input name="origin.producer" /></label>
-              <label>海拔<input name="origin.altitude" /></label>
-              <label>緯度 Latitude<input name="origin.latitude" type="number" step="any" /></label>
-              <label>經度 Longitude<input name="origin.longitude" type="number" step="any" /></label>
-              <label>地圖精準度
-                <select name="origin.mapAccuracy">
-                  <option value="country">country｜國家層級</option>
-                  <option value="region">region｜產區層級</option>
-                  <option value="subregion">subregion｜子產區層級</option>
-                  <option value="farm">farm｜莊園層級</option>
-                  <option value="unknown">unknown｜未確認</option>
-                </select>
-              </label>
-              <label class="full">產地說明<textarea name="origin.notes"></textarea></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Coffee Data</legend>
-            <div class="form-grid three">
-              <label>品種<input name="coffee.variety" /></label>
-              <label>處理法<input name="coffee.process" /></label>
-              <label>烘焙度<input name="coffee.roastLevel" /></label>
-              <label>烘焙日期<input name="coffee.roastDate" /></label>
-              <label>採收年份<input name="coffee.harvestYear" /></label>
-              <label>Lot 編號<input name="coffee.lotNumber" /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Auction / Competition</legend>
-            <div class="form-grid three">
-              <label>競賽 / 拍賣名稱<input name="auction.competition" /></label>
-              <label>主題<input name="auction.theme" /></label>
-              <label>類別<input name="auction.category" /></label>
-              <label>排名<input name="auction.rank" /></label>
-              <label>杯測分數<input name="auction.cuppingScore" /></label>
-              <label>得標價格<input name="auction.winningBid" /></label>
-              <label>得標者<input name="auction.winner" /></label>
-              <label>拍賣日期<input name="auction.auctionDate" /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Flavor</legend>
-            <div class="form-grid">
-              <label class="full">官方風味標籤，用逗號分隔<input name="flavor.officialNotes" placeholder="jasmine, bergamot, honey" /></label>
-              <label class="full">風味描述<textarea name="flavor.description"></textarea></label>
-              <label>香氣<input name="flavor.aroma" /></label>
-              <label>酸質<input name="flavor.acidity" /></label>
-              <label>甜感<input name="flavor.sweetness" /></label>
-              <label>苦感<input name="flavor.bitterness" /></label>
-              <label>醇厚度<input name="flavor.body" /></label>
-              <label>餘韻<input name="flavor.aftertaste" /></label>
-            </div>
-            <div class="form-grid three" style="margin-top:14px">
-              <label>酸質分數 0–5<input name="flavor.scores.acidity" type="number" min="0" max="5" step="1" /></label>
-              <label>甜感分數 0–5<input name="flavor.scores.sweetness" type="number" min="0" max="5" step="1" /></label>
-              <label>苦感分數 0–5<input name="flavor.scores.bitterness" type="number" min="0" max="5" step="1" /></label>
-              <label>醇厚度分數 0–5<input name="flavor.scores.body" type="number" min="0" max="5" step="1" /></label>
-              <label>香氣分數 0–5<input name="flavor.scores.aroma" type="number" min="0" max="5" step="1" /></label>
-              <label>餘韻分數 0–5<input name="flavor.scores.aftertaste" type="number" min="0" max="5" step="1" /></label>
-              <label>發酵感 0–5<input name="flavor.scores.fermentation" type="number" min="0" max="5" step="1" /></label>
-              <label>乾淨度 0–5<input name="flavor.scores.cleanCup" type="number" min="0" max="5" step="1" /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Brew Guide</legend>
-            <div class="form-grid three">
-              <label>推薦沖煮方式<input name="brew.method" /></label>
-              <label>粉水比<input name="brew.ratio" /></label>
-              <label>水溫<input name="brew.waterTemperature" /></label>
-              <label>研磨度<input name="brew.grind" /></label>
-              <label>萃取時間<input name="brew.time" /></label>
-              <label>推薦器具<input name="brew.tools" /></label>
-              <label class="full">適合飲用方式<input name="brew.serving" /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Story</legend>
-            <div class="form-grid">
-              <label class="full">產地背景<textarea name="story.originBackground"></textarea></label>
-              <label class="full">莊園 / 生產者故事<textarea name="story.producerStory"></textarea></label>
-              <label class="full">處理法說明<textarea name="story.processingStory"></textarea></label>
-              <label class="full">系統推導說明<textarea name="story.systemNote"></textarea></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend>Sources & Tags</legend>
-            <div class="form-grid">
-              <label>官方資料來源名稱<input name="sources.officialSourceName" /></label>
-              <label>官方資料來源 URL<input name="sources.officialSourceUrl" /></label>
-              <label>杯測 / 品飲來源<input name="sources.cuppingSource" /></label>
-              <label>是否包含個人品飲筆記<input name="sources.personalTasting" placeholder="Yes / No" /></label>
-              <label class="full">是否包含 AI 推導內容<input name="sources.aiDerivedContent" placeholder="Yes — only classification labels" /></label>
-              <label class="full">風味系標籤，用逗號分隔<input name="tags.flavorFamily" /></label>
-              <label class="full">口感系標籤，用逗號分隔<input name="tags.texture" /></label>
-              <label class="full">情境標籤，用逗號分隔<input name="tags.context" /></label>
-              <label>入門程度<input name="tags.level" /></label>
-              <label>人格類型<input name="personality.type" /></label>
-              <label class="full">人格分類依據<input name="personality.basis" /></label>
-              <label class="full">人格描述<textarea name="personality.description"></textarea></label>
-            </div>
-          </fieldset>
-
-          <div class="admin-actions">
-            <button class="btn primary" id="saveBtn" type="submit">儲存到暫存資料</button>
-            <button class="btn" id="previewBtn" type="button">更新 JSON 預覽</button>
-          </div>
+    <main>
+      <section id="loginPanel" class="card login-panel">
+        <h2>登入後台</h2>
+        <p class="muted">請使用 Firebase Authentication 裡建立的管理者帳號。</p>
+        <form id="loginForm" class="login-form">
+          <label>Email<input id="email" type="email" autocomplete="email" required /></label>
+          <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
+          <button type="submit">登入</button>
         </form>
+        <p id="loginMessage" class="message"></p>
+      </section>
 
-        <textarea id="jsonOutput" class="output-box" readonly aria-label="JSON output"></textarea>
+      <section id="adminPanel" class="admin-layout" hidden>
+        <aside class="card sidebar">
+          <div class="admin-actions">
+            <button id="newBeanBtn" type="button">新增咖啡豆</button>
+            <button id="logoutBtn" class="secondary" type="button">登出</button>
+          </div>
+          <p id="userLabel" class="muted"></p>
+          <div id="beanList" class="bean-list"></div>
+        </aside>
+
+        <section class="card editor-card">
+          <div class="editor-top">
+            <div>
+              <p class="eyebrow">Editor</p>
+              <h2 id="editorTitle">新增咖啡豆</h2>
+            </div>
+            <p id="saveMessage" class="message"></p>
+          </div>
+
+          <form id="beanForm" class="bean-form">
+            <input type="hidden" name="id" />
+
+            <div class="form-section">
+              <h3>基本資料</h3>
+              <div class="form-grid">
+                <label>咖啡豆名稱<input name="name" required /></label>
+                <label>Slug<input name="slug" placeholder="panama-geisha-demo" /></label>
+                <label>國家<input name="country" /></label>
+                <label>產區<input name="region" /></label>
+                <label>子產區<input name="subregion" /></label>
+                <label>莊園 / 合作社<input name="farm" /></label>
+                <label>生產者<input name="producer" /></label>
+                <label>品種<input name="variety" /></label>
+                <label>處理法<input name="process" /></label>
+                <label>海拔<input name="altitude" /></label>
+                <label>烘焙度<input name="roastLevel" /></label>
+                <label>杯測分數<input name="cuppingScore" type="number" step="0.01" /></label>
+              </div>
+              <label class="checkbox-label"><input name="published" type="checkbox" /> Published｜公開顯示在前台</label>
+            </div>
+
+            <div class="form-section">
+              <h3>Best of Panama / 拍賣欄位</h3>
+              <div class="form-grid">
+                <label>競賽 / 拍賣名稱<input name="competitionName" /></label>
+                <label>類別<input name="category" /></label>
+                <label>Lot 編號<input name="lotNumber" /></label>
+                <label>排名<input name="rank" /></label>
+                <label>得標價格<input name="bidPrice" /></label>
+                <label>得標者<input name="winningBidder" /></label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>風味資料</h3>
+              <label>官方風味描述<textarea name="officialFlavor" rows="3"></textarea></label>
+              <label>主要風味標籤<textarea name="flavorNotes" rows="2" placeholder="jasmine, bergamot, honey"></textarea></label>
+              <label>系統標籤<textarea name="tags" rows="2" placeholder="花香 | 高酸 | 清爽"></textarea></label>
+              <div class="form-grid scores-grid">
+                <label>酸質 0-5<input name="acidityScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>甜感 0-5<input name="sweetnessScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>苦感 0-5<input name="bitternessScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>醇厚度 0-5<input name="bodyScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>香氣 0-5<input name="aromaScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>餘韻 0-5<input name="aftertasteScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>發酵感 0-5<input name="fermentationScore" type="number" step="0.1" min="0" max="5" /></label>
+                <label>乾淨度 0-5<input name="cleanScore" type="number" step="0.1" min="0" max="5" /></label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>產地地圖</h3>
+              <div class="form-grid">
+                <label>Latitude 緯度<input name="latitude" type="number" step="any" /></label>
+                <label>Longitude 經度<input name="longitude" type="number" step="any" /></label>
+                <label>地圖精準度
+                  <select name="mapAccuracy">
+                    <option value="">未確認</option>
+                    <option value="country">國家層級</option>
+                    <option value="region">產區層級</option>
+                    <option value="subregion">子產區層級</option>
+                    <option value="farm">莊園層級</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>沖煮建議</h3>
+              <div class="form-grid">
+                <label>沖煮法<input name="brewMethod" /></label>
+                <label>粉水比<input name="brewRatio" /></label>
+                <label>水溫<input name="brewTemp" /></label>
+                <label>研磨度<input name="grind" /></label>
+                <label>萃取時間<input name="brewTime" /></label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>故事與資料來源</h3>
+              <label>產地背景<textarea name="storyOrigin" rows="4"></textarea></label>
+              <label>生產者 / 莊園故事<textarea name="storyProducer" rows="4"></textarea></label>
+              <label>處理法說明<textarea name="processNote" rows="4"></textarea></label>
+              <label>官方資料來源<textarea name="sourceOfficial" rows="2" placeholder="URL / 包裝 / 烘豆商資料"></textarea></label>
+              <label>杯測 / 品飲來源<textarea name="sourceCupping" rows="2"></textarea></label>
+              <label>個人品飲筆記來源<textarea name="sourcePersonal" rows="2"></textarea></label>
+            </div>
+
+            <div class="form-actions sticky-actions">
+              <button type="submit">儲存到 Firestore</button>
+              <button id="deleteBtn" type="button" class="danger" hidden>刪除這筆</button>
+              <button id="resetBtn" type="button" class="secondary">清空表單</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card import-card">
+          <div>
+            <p class="eyebrow">Batch Import</p>
+            <h2>CSV 批量匯入</h2>
+            <p class="muted">用 Google Sheets / Excel 整理後匯出 CSV，再從這裡匯入 Firestore。欄位名稱要放在第一列。</p>
+          </div>
+          <div class="import-actions">
+            <button id="downloadTemplateBtn" type="button" class="secondary">下載 CSV 範本</button>
+            <input id="csvFile" type="file" accept=".csv,text/csv" />
+            <button id="importCsvBtn" type="button">匯入 CSV</button>
+          </div>
+          <pre id="importLog" class="import-log"></pre>
+        </section>
       </section>
     </main>
 
-    <script src="/admin/admin.js"></script>
+    <script type="module" src="./admin.js"></script>
   </body>
 </html>

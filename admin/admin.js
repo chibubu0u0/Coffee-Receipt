@@ -1,323 +1,369 @@
-const $ = (selector) => document.querySelector(selector);
-const editor = $('#editor');
-const jsonOutput = $('#jsonOutput');
+import { firebaseConfig, adminEmail, collectionName } from '../firebase-config.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const els = {
+  loginPanel: document.getElementById('loginPanel'),
+  adminPanel: document.getElementById('adminPanel'),
+  loginForm: document.getElementById('loginForm'),
+  email: document.getElementById('email'),
+  password: document.getElementById('password'),
+  loginMessage: document.getElementById('loginMessage'),
+  userLabel: document.getElementById('userLabel'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  newBeanBtn: document.getElementById('newBeanBtn'),
+  beanList: document.getElementById('beanList'),
+  beanForm: document.getElementById('beanForm'),
+  editorTitle: document.getElementById('editorTitle'),
+  saveMessage: document.getElementById('saveMessage'),
+  deleteBtn: document.getElementById('deleteBtn'),
+  resetBtn: document.getElementById('resetBtn'),
+  csvFile: document.getElementById('csvFile'),
+  importCsvBtn: document.getElementById('importCsvBtn'),
+  importLog: document.getElementById('importLog'),
+  downloadTemplateBtn: document.getElementById('downloadTemplateBtn')
+};
+
 let beans = [];
-let currentIndex = 0;
+let activeId = '';
 
-const arrayFields = new Set([
-  'flavor.officialNotes',
-  'tags.flavorFamily',
-  'tags.texture',
-  'tags.context'
-]);
+els.email.value = adminEmail;
 
-const numberFields = new Set([
-  'origin.latitude',
-  'origin.longitude',
-  'flavor.scores.acidity',
-  'flavor.scores.sweetness',
-  'flavor.scores.bitterness',
-  'flavor.scores.body',
-  'flavor.scores.aroma',
-  'flavor.scores.aftertaste',
-  'flavor.scores.fermentation',
-  'flavor.scores.cleanCup'
-]);
+const fields = [
+  'name','slug','country','region','subregion','farm','producer','variety','process','altitude','roastLevel','cuppingScore','published',
+  'competitionName','category','lotNumber','rank','bidPrice','winningBidder',
+  'officialFlavor','flavorNotes','tags',
+  'acidityScore','sweetnessScore','bitternessScore','bodyScore','aromaScore','aftertasteScore','fermentationScore','cleanScore',
+  'latitude','longitude','mapAccuracy',
+  'brewMethod','brewRatio','brewTemp','grind','brewTime',
+  'storyOrigin','storyProducer','processNote','sourceOfficial','sourceCupping','sourcePersonal'
+];
 
-async function init() {
-  try {
-    const response = await fetch('/data/beans.json', { cache: 'no-store' });
-    beans = await response.json();
-  } catch (error) {
-    console.warn('Cannot load data/beans.json, starting with blank data.', error);
-    beans = [createBlankBean()];
-  }
-  if (!Array.isArray(beans) || beans.length === 0) beans = [createBlankBean()];
-  renderList();
-  loadBean(0);
-  bindEvents();
-  updateOutput();
-}
+const numericFields = new Set(['cuppingScore','acidityScore','sweetnessScore','bitternessScore','bodyScore','aromaScore','aftertasteScore','fermentationScore','cleanScore','latitude','longitude']);
+const arrayFields = new Set(['flavorNotes','tags']);
 
-function bindEvents() {
-  $('#newBeanBtn').addEventListener('click', () => {
-    saveCurrentFromForm();
-    beans.unshift(createBlankBean());
-    currentIndex = 0;
-    renderList();
-    loadBean(0);
-  });
-
-  $('#duplicateBtn').addEventListener('click', () => {
-    saveCurrentFromForm();
-    const clone = structuredClone(beans[currentIndex]);
-    clone.name = `${clone.name || 'Untitled'} Copy`;
-    clone.slug = `${clone.slug || slugify(clone.name)}-copy-${Date.now().toString().slice(-4)}`;
-    beans.splice(currentIndex + 1, 0, clone);
-    currentIndex += 1;
-    renderList();
-    loadBean(currentIndex);
-  });
-
-  $('#deleteBtn').addEventListener('click', () => {
-    if (beans.length <= 1) {
-      alert('至少保留一筆資料。');
-      return;
-    }
-    const ok = confirm('確定要刪除目前這筆資料嗎？');
-    if (!ok) return;
-    beans.splice(currentIndex, 1);
-    currentIndex = Math.max(0, currentIndex - 1);
-    renderList();
-    loadBean(currentIndex);
-  });
-
-  $('#exportBtn').addEventListener('click', () => {
-    saveCurrentFromForm();
-    updateOutput();
-    downloadJson();
-  });
-
-  $('#copyBtn').addEventListener('click', async () => {
-    saveCurrentFromForm();
-    updateOutput();
-    await navigator.clipboard.writeText(jsonOutput.value);
-    alert('JSON 已複製。');
-  });
-
-  $('#previewBtn').addEventListener('click', () => {
-    saveCurrentFromForm();
-    updateOutput();
-  });
-
-  $('#importInput').addEventListener('change', importJson);
-
-  editor.addEventListener('submit', (event) => {
-    event.preventDefault();
-    saveCurrentFromForm();
-    renderList();
-    updateOutput();
-    alert('已儲存到瀏覽器暫存資料。記得匯出 beans.json 並上傳到 GitHub。');
-  });
-
-  editor.addEventListener('input', (event) => {
-    if (event.target.name === 'name' && !editor.elements.slug.value) {
-      editor.elements.slug.value = slugify(event.target.value);
-    }
-  });
-}
-
-function createBlankBean() {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    slug: `new-coffee-${Date.now().toString().slice(-6)}`,
-    published: true,
-    name: 'New Coffee Bean',
-    subtitle: '',
-    roaster: '',
-    origin: {
-      country: '',
-      region: '',
-      subregion: '',
-      farm: '',
-      producer: '',
-      altitude: '',
-      latitude: '',
-      longitude: '',
-      mapAccuracy: 'unknown',
-      notes: ''
-    },
-    coffee: {
-      variety: '',
-      process: '',
-      roastLevel: '',
-      roastDate: '',
-      harvestYear: '',
-      lotNumber: ''
-    },
-    auction: {
-      competition: '',
-      theme: '',
-      category: '',
-      rank: '',
-      cuppingScore: '',
-      winningBid: '',
-      winner: '',
-      auctionDate: ''
-    },
-    flavor: {
-      officialNotes: [],
-      description: '',
-      aroma: '',
-      acidity: '',
-      sweetness: '',
-      bitterness: '',
-      body: '',
-      aftertaste: '',
-      scores: {
-        acidity: 0,
-        sweetness: 0,
-        bitterness: 0,
-        body: 0,
-        aroma: 0,
-        aftertaste: 0,
-        fermentation: 0,
-        cleanCup: 0
-      }
-    },
-    brew: {
-      method: '',
-      ratio: '',
-      waterTemperature: '',
-      grind: '',
-      time: '',
-      tools: '',
-      serving: ''
-    },
-    story: {
-      originBackground: '',
-      producerStory: '',
-      processingStory: '',
-      systemNote: ''
-    },
-    sources: {
-      officialSourceName: '',
-      officialSourceUrl: '',
-      cuppingSource: '',
-      personalTasting: 'No',
-      aiDerivedContent: 'No',
-      lastUpdated: today
-    },
-    tags: {
-      flavorFamily: [],
-      texture: [],
-      context: [],
-      level: ''
-    },
-    personality: {
-      type: '',
-      basis: '',
-      description: ''
-    }
-  };
-}
-
-function renderList() {
-  $('#adminList').innerHTML = beans.map((bean, index) => `
-    <button class="bean-button ${index === currentIndex ? 'active' : ''}" data-index="${index}" type="button">
-      <strong>${escapeHtml(bean.name || 'Untitled')}</strong>
-      <span>${escapeHtml(bean.slug || '')}${bean.published === false ? ' · hidden' : ''}</span>
-    </button>
-  `).join('');
-
-  $('#adminList').querySelectorAll('.bean-button').forEach((button) => {
-    button.addEventListener('click', () => {
-      saveCurrentFromForm();
-      currentIndex = Number(button.dataset.index);
-      renderList();
-      loadBean(currentIndex);
-    });
-  });
-}
-
-function loadBean(index) {
-  currentIndex = index;
-  const bean = beans[index] || createBlankBean();
-  [...editor.elements].forEach((element) => {
-    if (!element.name) return;
-    const value = getDeep(bean, element.name);
-    if (arrayFields.has(element.name)) {
-      element.value = Array.isArray(value) ? value.join(', ') : value || '';
-    } else if (element.name === 'published') {
-      element.value = String(value !== false);
-    } else {
-      element.value = value ?? '';
-    }
-  });
-  updateOutput();
-}
-
-function saveCurrentFromForm() {
-  const bean = structuredClone(beans[currentIndex] || createBlankBean());
-  [...editor.elements].forEach((element) => {
-    if (!element.name) return;
-    let value = element.value.trim();
-    if (arrayFields.has(element.name)) {
-      value = value.split(',').map((item) => item.trim()).filter(Boolean);
-    } else if (numberFields.has(element.name)) {
-      value = value === '' ? '' : Number(value);
-    } else if (element.name === 'published') {
-      value = value === 'true';
-    }
-    setDeep(bean, element.name, value);
-  });
-  if (!bean.slug) bean.slug = slugify(bean.name || `coffee-${Date.now()}`);
-  beans[currentIndex] = bean;
-}
-
-function updateOutput() {
-  jsonOutput.value = JSON.stringify(beans, null, 2);
-}
-
-function downloadJson() {
-  const blob = new Blob([jsonOutput.value], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'beans.json';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-async function importJson(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    if (!Array.isArray(data)) throw new Error('JSON 必須是陣列格式。');
-    beans = data;
-    currentIndex = 0;
-    renderList();
-    loadBean(0);
-    updateOutput();
-  } catch (error) {
-    alert(`匯入失敗：${error.message}`);
-  } finally {
-    event.target.value = '';
-  }
-}
-
-function getDeep(object, path) {
-  return path.split('.').reduce((acc, key) => acc?.[key], object);
-}
-
-function setDeep(object, path, value) {
-  const keys = path.split('.');
-  let target = object;
-  keys.slice(0, -1).forEach((key) => {
-    if (!target[key] || typeof target[key] !== 'object') target[key] = {};
-    target = target[key];
-  });
-  target[keys.at(-1)] = value;
-}
-
-function slugify(value) {
-  return String(value || '')
+function slugify(text) {
+  return String(text || '')
+    .trim()
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || `coffee-${Date.now().toString().slice(-6)}`;
+    .slice(0, 80);
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
-  }[char]));
+function parseArray(text) {
+  if (Array.isArray(text)) return text.filter(Boolean);
+  return String(text || '').split(/[|,;\n]/).map(item => item.trim()).filter(Boolean);
 }
 
-init();
+function arrayToText(value) {
+  return Array.isArray(value) ? value.join(', ') : (value || '');
+}
+
+function toBool(value) {
+  if (typeof value === 'boolean') return value;
+  const s = String(value || '').trim().toLowerCase();
+  return ['true','1','yes','y','公開','是','published'].includes(s);
+}
+
+function formToBean() {
+  const data = new FormData(els.beanForm);
+  const bean = {};
+  fields.forEach(field => {
+    const input = els.beanForm.elements[field];
+    if (!input) return;
+    if (field === 'published') {
+      bean.published = input.checked;
+      return;
+    }
+    let value = data.get(field);
+    if (arrayFields.has(field)) {
+      bean[field] = parseArray(value);
+      return;
+    }
+    if (numericFields.has(field)) {
+      if (value === '' || value === null) return;
+      const n = Number(value);
+      if (Number.isFinite(n)) bean[field] = n;
+      return;
+    }
+    value = String(value || '').trim();
+    if (value !== '') bean[field] = value;
+  });
+  if (!bean.slug && bean.name) bean.slug = slugify(bean.name);
+  return bean;
+}
+
+function fillForm(bean = {}) {
+  activeId = bean.id || '';
+  els.beanForm.reset();
+  els.beanForm.elements.id.value = activeId;
+  fields.forEach(field => {
+    const input = els.beanForm.elements[field];
+    if (!input) return;
+    if (field === 'published') {
+      input.checked = Boolean(bean.published);
+    } else if (arrayFields.has(field)) {
+      input.value = arrayToText(bean[field]);
+    } else {
+      input.value = bean[field] ?? '';
+    }
+  });
+  els.editorTitle.textContent = activeId ? `編輯：${bean.name || 'Untitled'}` : '新增咖啡豆';
+  els.deleteBtn.hidden = !activeId;
+  renderBeanList();
+}
+
+function status(message, isError = false) {
+  els.saveMessage.textContent = message;
+  els.saveMessage.style.color = isError ? '#8a2d20' : '';
+  window.clearTimeout(status.timer);
+  status.timer = window.setTimeout(() => {
+    els.saveMessage.textContent = '';
+  }, 5000);
+}
+
+function renderBeanList() {
+  if (!beans.length) {
+    els.beanList.innerHTML = '<p class="muted">目前沒有資料。</p>';
+    return;
+  }
+  els.beanList.innerHTML = beans.map(bean => `
+    <button type="button" class="bean-item ${bean.id === activeId ? 'active' : ''}" data-id="${bean.id}">
+      <strong>${bean.name || 'Untitled Coffee Bean'}</strong>
+      <span>${bean.published ? '公開' : '未公開'}｜${[bean.country, bean.region, bean.process].filter(Boolean).join(' · ') || '尚未填寫'}</span>
+    </button>
+  `).join('');
+  els.beanList.querySelectorAll('.bean-item').forEach(button => {
+    button.addEventListener('click', () => {
+      const bean = beans.find(item => item.id === button.dataset.id);
+      if (bean) fillForm(bean);
+    });
+  });
+}
+
+async function loadBeans() {
+  const snapshot = await getDocs(collection(db, collectionName));
+  beans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  beans.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant'));
+  renderBeanList();
+}
+
+async function saveBean(event) {
+  event.preventDefault();
+  try {
+    const bean = formToBean();
+    if (!bean.name) throw new Error('請至少填寫咖啡豆名稱。');
+
+    if (activeId) {
+      await updateDoc(doc(db, collectionName, activeId), {
+        ...bean,
+        updatedAt: serverTimestamp()
+      });
+      status('已更新 Firestore。前台重新整理後會看到最新資料。');
+    } else {
+      const docRef = await addDoc(collection(db, collectionName), {
+        ...bean,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      activeId = docRef.id;
+      els.beanForm.elements.id.value = activeId;
+      status('已新增到 Firestore。');
+    }
+    await loadBeans();
+    const saved = beans.find(bean => bean.id === activeId);
+    if (saved) fillForm(saved);
+  } catch (error) {
+    console.error(error);
+    status(error.message, true);
+  }
+}
+
+async function deleteActiveBean() {
+  if (!activeId) return;
+  const bean = beans.find(item => item.id === activeId);
+  const ok = window.confirm(`確定刪除「${bean?.name || activeId}」嗎？此動作無法復原。`);
+  if (!ok) return;
+  try {
+    await deleteDoc(doc(db, collectionName, activeId));
+    status('已刪除。');
+    activeId = '';
+    await loadBeans();
+    fillForm({});
+  } catch (error) {
+    console.error(error);
+    status(error.message, true);
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i += 1;
+      row.push(cell);
+      if (row.some(value => value.trim() !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some(value => value.trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function rowToBean(headers, row) {
+  const bean = {};
+  headers.forEach((header, index) => {
+    const key = header.trim();
+    if (!key) return;
+    const raw = row[index] ?? '';
+    if (key === 'published') {
+      bean.published = toBool(raw);
+    } else if (arrayFields.has(key)) {
+      bean[key] = String(raw || '').split(/[|;]/).map(item => item.trim()).filter(Boolean);
+    } else if (numericFields.has(key)) {
+      if (String(raw).trim() === '') return;
+      const n = Number(raw);
+      if (Number.isFinite(n)) bean[key] = n;
+    } else {
+      const value = String(raw || '').trim();
+      if (value !== '') bean[key] = value;
+    }
+  });
+  if (!bean.slug && bean.name) bean.slug = slugify(bean.name);
+  return bean;
+}
+
+async function importCSV() {
+  const file = els.csvFile.files?.[0];
+  if (!file) {
+    els.importLog.textContent = '請先選擇 CSV 檔案。';
+    return;
+  }
+  try {
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('CSV 至少需要標題列與一筆資料。');
+    const headers = rows[0];
+    let count = 0;
+    els.importLog.textContent = '匯入中…\n';
+    for (const row of rows.slice(1)) {
+      const bean = rowToBean(headers, row);
+      if (!bean.name) {
+        els.importLog.textContent += '跳過一筆：沒有 name。\n';
+        continue;
+      }
+      await addDoc(collection(db, collectionName), {
+        ...bean,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      count += 1;
+      els.importLog.textContent += `已匯入：${bean.name}\n`;
+    }
+    els.importLog.textContent += `完成，共匯入 ${count} 筆。`;
+    await loadBeans();
+  } catch (error) {
+    console.error(error);
+    els.importLog.textContent = `匯入失敗：${error.message}`;
+  }
+}
+
+function downloadCSVTemplate() {
+  const headers = [
+    'name','slug','country','region','farm','producer','variety','process','altitude','roastLevel','officialFlavor','flavorNotes','cuppingScore','latitude','longitude','mapAccuracy','published','sourceOfficial'
+  ];
+  const sample = [
+    'Panama Geisha Demo','panama-geisha-demo','Panama','Boquete','Demo Farm','Demo Producer','Geisha','Washed','1600-1800m','Light','Jasmine, bergamot, honey','jasmine|bergamot|honey','90','8.779','-82.433','region','true','Best of Panama / Roaster info'
+  ];
+  const csv = `${headers.join(',')}\n${sample.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')}\n`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'coffee-beans-template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+els.loginForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  els.loginMessage.textContent = '登入中…';
+  try {
+    await signInWithEmailAndPassword(auth, els.email.value, els.password.value);
+    els.loginMessage.textContent = '';
+  } catch (error) {
+    console.error(error);
+    els.loginMessage.textContent = error.message;
+  }
+});
+
+els.logoutBtn.addEventListener('click', () => signOut(auth));
+els.beanForm.addEventListener('submit', saveBean);
+els.deleteBtn.addEventListener('click', deleteActiveBean);
+els.resetBtn.addEventListener('click', () => fillForm({}));
+els.newBeanBtn.addEventListener('click', () => fillForm({}));
+els.importCsvBtn.addEventListener('click', importCSV);
+els.downloadTemplateBtn.addEventListener('click', downloadCSVTemplate);
+els.beanForm.elements.name.addEventListener('input', event => {
+  const slugInput = els.beanForm.elements.slug;
+  if (!activeId && !slugInput.value) slugInput.value = slugify(event.target.value);
+});
+
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    els.loginPanel.hidden = true;
+    els.adminPanel.hidden = false;
+    els.userLabel.textContent = `登入中：${user.email}`;
+    try {
+      await loadBeans();
+      fillForm({});
+    } catch (error) {
+      console.error(error);
+      status(`讀取失敗：${error.message}`, true);
+    }
+  } else {
+    els.loginPanel.hidden = false;
+    els.adminPanel.hidden = true;
+  }
+});
