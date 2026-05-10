@@ -1,0 +1,116 @@
+[
+  {
+    "slug": "demo-yirgacheffe-washed",
+    "name": "Demo Bean｜Yirgacheffe Washed",
+    "roaster": "請替換成你的烘豆品牌",
+    "process": "Washed / 水洗",
+    "variety": "Heirloom / Landrace（請依官方資料確認）",
+    "tags": ["範例資料", "花香", "柑橘", "茶感", "產區層級"],
+    "origin": {
+      "country": "Ethiopia",
+      "region": "Yirgacheffe",
+      "subRegion": "請填子產區，例如 Gedeb / Kochere",
+      "farm": "請填莊園、處理廠或合作社",
+      "producer": "請填生產者或合作社",
+      "altitude": "1,900–2,100 m（範例，請依資料修改）"
+    },
+    "map": {
+      "label": "Yirgacheffe, Ethiopia",
+      "lat": 6.1629,
+      "lng": 38.2059,
+      "accuracy": "region"
+    },
+    "roast": {
+      "level": "Light Roast / 淺焙",
+      "date": "請填烘焙日期"
+    },
+    "flavor": {
+      "officialNotes": ["白花", "柑橘", "蜂蜜", "紅茶感"],
+      "scores": {
+        "acidity": 4,
+        "sweetness": 4,
+        "bitterness": 1,
+        "body": 2,
+        "aroma": 4,
+        "aftertaste": 3,
+        "fermentation": 1,
+        "cleanCup": 5
+      }
+    },
+    "brew": {
+      "method": "Hand Drip / 手沖",
+      "ratio": "1:15–1:16",
+      "temperature": "90–92°C",
+      "grind": "中細研磨",
+      "time": "2:30–3:00",
+      "tool": "V60 / Origami",
+      "note": "此為範例沖煮建議。正式使用時，請依烘豆師建議或你自己的測試結果調整。"
+    },
+    "story": {
+      "origin": "這是範例文字。正式頁面請改成基於烘豆商、生豆商或莊園資料的說明，避免無來源的故事化敘述。"
+    },
+    "sources": {
+      "official": "範例資料，請替換成豆袋、官網、烘豆商或生豆商來源",
+      "tasting": "尚未填寫實際品飲紀錄",
+      "aiDerived": true,
+      "lastUpdated": "2026-05-10"
+    }
+  },
+  {
+    "slug": "template-empty-card",
+    "name": "Template｜空白資料卡",
+    "roaster": "—",
+    "process": "—",
+    "variety": "—",
+    "tags": ["空白模板", "待填寫"],
+    "origin": {
+      "country": "—",
+      "region": "—",
+      "subRegion": "—",
+      "farm": "—",
+      "producer": "—",
+      "altitude": "—"
+    },
+    "map": {
+      "label": "未標註",
+      "lat": null,
+      "lng": null,
+      "accuracy": "unknown"
+    },
+    "roast": {
+      "level": "—",
+      "date": "—"
+    },
+    "flavor": {
+      "officialNotes": [],
+      "scores": {
+        "acidity": 0,
+        "sweetness": 0,
+        "bitterness": 0,
+        "body": 0,
+        "aroma": 0,
+        "aftertaste": 0,
+        "fermentation": 0,
+        "cleanCup": 0
+      }
+    },
+    "brew": {
+      "method": "—",
+      "ratio": "—",
+      "temperature": "—",
+      "grind": "—",
+      "time": "—",
+      "tool": "—",
+      "note": "—"
+    },
+    "story": {
+      "origin": "—"
+    },
+    "sources": {
+      "official": "—",
+      "tasting": "—",
+      "aiDerived": false,
+      "lastUpdated": "—"
+    }
+  }
+]
