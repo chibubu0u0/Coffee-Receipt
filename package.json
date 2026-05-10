@@ -1,0 +1,10 @@
+{
+  "name": "coffee-origin-card-github-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static coffee origin card website with a browser-based JSON admin editor.",
+  "scripts": {
+    "start": "python3 -m http.server 5173",
+    "dev": "python3 -m http.server 5173"
+  }
+}

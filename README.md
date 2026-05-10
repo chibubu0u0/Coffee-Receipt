@@ -1,141 +1,134 @@
-# Coffee Origin Card
+# Coffee Origin Card — GitHub Admin Version
 
-一個可以放到 GitHub，並用 Vercel 部署的咖啡豆資料卡靜態網站。
+這是一個免 Supabase / 免資料庫的咖啡豆資料卡網站。
 
-核心功能：
+- 前台：`/`
+- 後台：`/admin`
+- 資料庫：`data/beans.json`
+- 部署：GitHub + Vercel
 
-- 咖啡豆資料卡
-- 產地地圖標註
-- 地圖精準度說明
-- 風味分數視覺化
-- 沖煮建議
-- QR Code 分享
-- 資料來源透明標示
-- 可用 `data/beans.json` 管理多支豆子
+> 注意：這個 `/admin` 是「瀏覽器內編輯器」，不會直接寫回 GitHub。你需要匯出 `beans.json` 後，手動覆蓋 GitHub 裡的 `data/beans.json`。
 
 ---
 
-## 1. 如何修改咖啡豆資料
+## 1. 上傳到 GitHub
 
-打開：
+請確認 repository 第一層可以直接看到：
 
 ```txt
-data/beans.json
+index.html
+styles.css
+app.js
+admin/
+data/
+vercel.json
+package.json
+README.md
 ```
 
-每一筆資料代表一張咖啡豆資料卡。
+不要讓檔案變成：
 
-最重要的欄位：
-
-```json
-{
-  "slug": "demo-yirgacheffe-washed",
-  "name": "Demo Bean｜Yirgacheffe Washed",
-  "roaster": "請替換成你的烘豆品牌",
-  "process": "Washed / 水洗",
-  "variety": "Heirloom / Landrace",
-  "origin": {
-    "country": "Ethiopia",
-    "region": "Yirgacheffe",
-    "subRegion": "Gedeb",
-    "farm": "Worka Cooperative",
-    "producer": "Producer name",
-    "altitude": "1,900–2,100 m"
-  },
-  "map": {
-    "label": "Yirgacheffe, Ethiopia",
-    "lat": 6.1629,
-    "lng": 38.2059,
-    "accuracy": "region"
-  }
-}
+```txt
+coffee-origin-card-github-admin/index.html
+coffee-origin-card-github-admin/styles.css
 ```
+
+如果真的多包一層資料夾，Vercel 的 Root Directory 就要選到看得到 `index.html` 的那層。
 
 ---
 
-## 2. 地圖精準度怎麼填
+## 2. Vercel 設定
 
-`accuracy` 可以使用：
+這版是純靜態網站，不需要 build。
+
+| Vercel 欄位 | 填法 |
+|---|---|
+| Framework Preset | Other |
+| Root Directory | 看得到 `index.html` 的那層，通常不用改 |
+| Build Command | 留空 |
+| Output Directory | 留空，或填 `.` |
+| Install Command | 留空 |
+| Environment Variables | 不用填 |
+
+---
+
+## 3. 如何更新咖啡豆資料
+
+1. 打開你的網站 `/admin`
+2. 新增或編輯咖啡豆資料
+3. 按「儲存到暫存資料」
+4. 按「匯出 beans.json」
+5. 到 GitHub repository 打開 `data/beans.json`
+6. 上傳或貼上新的 JSON 內容
+7. Commit changes
+8. Vercel 會自動重新部署
+
+---
+
+## 4. 重要欄位說明
+
+### 地圖精準度 `origin.mapAccuracy`
 
 | 值 | 意思 |
 |---|---|
-| `country` | 國家層級 |
-| `region` | 產區層級 |
-| `subregion` | 子產區層級 |
-| `farm` | 莊園 / 合作社 / 處理廠層級 |
-| `unknown` | 未確認 |
+| country | 只確認到國家 |
+| region | 確認到產區 |
+| subregion | 確認到子產區 |
+| farm | 確認到莊園 / 合作社 |
+| unknown | 未確認 |
 
-如果只有產區，不要硬填莊園座標。可以填產區附近位置，並把 `accuracy` 設為 `region`。
+建議不要硬填精確座標。若資料只到產區，就標產區層級即可。
 
----
+### 風味分數 `flavor.scores`
 
-## 3. 如何加入更多咖啡豆
+目前使用 0–5 分：
 
-在 `beans.json` 陣列中複製一整筆物件，改掉：
+- acidity 酸質
+- sweetness 甜感
+- bitterness 苦感
+- body 醇厚度
+- aroma 香氣強度
+- aftertaste 餘韻長度
+- fermentation 發酵感
+- cleanCup 乾淨度
 
-- `slug`
-- `name`
-- `origin`
-- `map`
-- `flavor`
-- `brew`
-- `sources`
+### 資料來源 `sources`
 
-`slug` 建議用英文小寫與 dash，例如：
+建議每筆資料都填來源，避免變成無中生有：
 
-```txt
-colombia-huila-washed-2026
-```
-
-網址會變成：
-
-```txt
-/?bean=colombia-huila-washed-2026
-```
-
-QR Code 也會使用這個網址。
-
----
-
-## 4. 部署到 GitHub + Vercel
-
-### 方法 A：直接上傳 GitHub
-
-1. 解壓縮這個 zip
-2. 建立一個 GitHub Repository
-3. 把所有檔案上傳到 Repository 根目錄
-4. 到 Vercel 新增專案
-5. 選擇這個 GitHub Repository
-6. Deploy
-
-這是純靜態網站，不需要額外 build 指令。
+- `officialSourceName`
+- `officialSourceUrl`
+- `cuppingSource`
+- `personalTasting`
+- `aiDerivedContent`
+- `lastUpdated`
 
 ---
 
 ## 5. 本機預覽
 
-因為網站會讀取 `data/beans.json`，建議用本機伺服器預覽。
-
-如果你有 Python：
+可以直接打開 `index.html`，但因為瀏覽器可能擋掉本機 JSON 讀取，建議用簡單 server：
 
 ```bash
-python3 -m http.server 3000
+python3 -m http.server 5173
 ```
 
-然後打開：
+然後開：
 
 ```txt
-http://localhost:3000
+http://localhost:5173
+http://localhost:5173/admin
 ```
 
 ---
 
-## 6. 注意資料可信度
+## 6. 未來升級方向
 
-建議把資料分成三種：
+如果之後想要真正「按儲存就更新網站」，可以升級成：
 
-1. 官方資料：豆袋、烘豆商、官網、生豆商
-2. 品飲資料：你自己喝到的筆記或杯測紀錄
-3. 系統推導：人格分類、情境推薦、風味類型
+- Decap CMS：用 GitHub 登入後台，儲存後自動 commit
+- Google Sheets：用試算表當資料庫
+- Notion API：用 Notion database 當後台
+- Cloudflare D1：低成本 SQL 資料庫
 
-不要把系統推導寫成官方資料。
+目前這版先以免費、穩定、好部署為主。

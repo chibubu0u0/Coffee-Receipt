@@ -1,271 +1,246 @@
+const $ = (selector) => document.querySelector(selector);
+const toArray = (value) => Array.isArray(value) ? value : String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+const text = (value, fallback = '未提供') => value || fallback;
+
 let beans = [];
-let map;
-let marker;
-let circle;
+let currentBean = null;
+let mapInstance = null;
+let mapMarker = null;
 
-const $ = (id) => document.getElementById(id);
+const accuracyLabels = {
+  country: '國家層級',
+  region: '產區層級',
+  subregion: '子產區層級',
+  farm: '莊園層級',
+  unknown: '未確認'
+};
 
-const labels = {
+const scoreLabels = {
   acidity: '酸質',
   sweetness: '甜感',
   bitterness: '苦感',
   body: '醇厚度',
-  aroma: '香氣',
-  aftertaste: '餘韻',
+  aroma: '香氣強度',
+  aftertaste: '餘韻長度',
   fermentation: '發酵感',
   cleanCup: '乾淨度'
 };
 
-const accuracyText = {
-  country: '國家層級：僅能代表國家，不代表精確產區或莊園位置。',
-  region: '產區層級：標註為產區大致位置，非精確莊園座標。',
-  subregion: '子產區層級：標註為較細地區位置，但仍可能不是莊園座標。',
-  farm: '莊園層級：使用莊園、處理廠或合作社可查證座標。',
-  unknown: '未確認：目前沒有足夠資料標示地圖位置。'
-};
-
-async function loadBeans() {
+async function init() {
   try {
-    const response = await fetch('./data/beans.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error('Failed to load beans.json');
-    beans = await response.json();
-    setupSelector();
-    const fromUrl = new URLSearchParams(window.location.search).get('bean');
-    const selected = beans.find((bean) => bean.slug === fromUrl) || beans[0];
-    renderBean(selected);
+    const response = await fetch('/data/beans.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Cannot load beans.json');
+    beans = (await response.json()).filter((bean) => bean.published !== false);
+    renderBeanList();
+    const slug = new URLSearchParams(window.location.search).get('bean');
+    const initialBean = beans.find((bean) => bean.slug === slug) || beans[0];
+    if (initialBean) renderBean(initialBean);
+    else showEmptyState();
   } catch (error) {
     console.error(error);
-    $('beanName').textContent = '資料載入失敗';
-    $('beanSubtitle').textContent = '請確認 data/beans.json 是否存在，且 JSON 格式正確。';
+    showEmptyState();
   }
 }
 
-function setupSelector() {
-  const select = $('beanSelect');
-  select.innerHTML = '';
-  beans.forEach((bean) => {
-    const option = document.createElement('option');
-    option.value = bean.slug;
-    option.textContent = bean.name;
-    select.appendChild(option);
+function showEmptyState() {
+  $('#emptyState').hidden = false;
+  $('#beanCard').hidden = true;
+}
+
+function renderBeanList() {
+  $('#beanCount').textContent = beans.length;
+  $('#beanList').innerHTML = beans.map((bean, index) => `
+    <button class="bean-button" data-index="${index}" type="button">
+      <strong>${escapeHtml(bean.name)}</strong>
+      <span>${escapeHtml([bean.origin?.country, bean.origin?.region, bean.coffee?.process].filter(Boolean).join(' · '))}</span>
+    </button>
+  `).join('');
+  $('#beanList').addEventListener('click', (event) => {
+    const button = event.target.closest('.bean-button');
+    if (!button) return;
+    const bean = beans[Number(button.dataset.index)];
+    renderBean(bean, true);
   });
-  select.addEventListener('change', () => {
-    const bean = beans.find((item) => item.slug === select.value);
-    if (!bean) return;
+}
+
+function renderBean(bean, pushState = false) {
+  currentBean = bean;
+  $('#emptyState').hidden = true;
+  $('#beanCard').hidden = false;
+
+  document.title = `${bean.name}｜Coffee Origin Card`;
+  if (pushState) {
     const url = new URL(window.location.href);
     url.searchParams.set('bean', bean.slug);
-    window.history.replaceState({}, '', url);
-    renderBean(bean);
+    window.history.pushState({}, '', url);
+  }
+
+  document.querySelectorAll('.bean-button').forEach((button, index) => {
+    button.classList.toggle('active', beans[index].slug === bean.slug);
   });
-}
 
-function renderBean(bean) {
-  $('beanSelect').value = bean.slug;
-  $('beanName').textContent = bean.name || '未命名咖啡豆';
-  $('beanSubtitle').textContent = `${safe(bean.origin?.country)} · ${safe(bean.origin?.region)} · ${safe(bean.process)}`;
-  $('roaster').textContent = safe(bean.roaster);
-  $('process').textContent = safe(bean.process);
-  $('roastLevel').textContent = safe(bean.roast?.level);
-  $('altitude').textContent = safe(bean.origin?.altitude);
+  $('#competitionLabel').textContent = bean.auction?.competition || 'Origin Card';
+  $('#beanName').textContent = bean.name;
+  $('#beanSubtitle').textContent = bean.subtitle || '';
 
-  renderTags('heroTags', bean.tags || []);
+  renderMeta('#heroMeta', [
+    ['Country', bean.origin?.country],
+    ['Region', bean.origin?.region],
+    ['Process', bean.coffee?.process],
+    ['Variety', bean.coffee?.variety],
+    ['Score', bean.auction?.cuppingScore],
+    ['Map', accuracyLabels[bean.origin?.mapAccuracy] || bean.origin?.mapAccuracy]
+  ]);
 
-  $('country').textContent = safe(bean.origin?.country);
-  $('region').textContent = safe(bean.origin?.region);
-  $('subRegion').textContent = safe(bean.origin?.subRegion);
-  $('farm').textContent = safe(bean.origin?.farm);
-  $('producer').textContent = safe(bean.origin?.producer);
-  $('variety').textContent = safe(bean.variety);
-  $('originStory').textContent = safe(bean.story?.origin);
-  $('accuracyNote').textContent = accuracyText[bean.map?.accuracy] || accuracyText.unknown;
-
-  $('officialNotes').textContent = Array.isArray(bean.flavor?.officialNotes)
-    ? bean.flavor.officialNotes.join(' / ')
-    : safe(bean.flavor?.officialNotes);
-  renderFlavorNotes(bean.flavor?.officialNotes || []);
-  renderFlavorChart(bean.flavor?.scores || {});
-  $('personaText').textContent = buildPersona(bean.flavor?.scores || {}, bean);
-
-  $('brewMethod').textContent = safe(bean.brew?.method);
-  $('brewRatio').textContent = safe(bean.brew?.ratio);
-  $('brewTemp').textContent = safe(bean.brew?.temperature);
-  $('brewGrind').textContent = safe(bean.brew?.grind);
-  $('brewTime').textContent = safe(bean.brew?.time);
-  $('brewTool').textContent = safe(bean.brew?.tool);
-  $('brewNote').textContent = safe(bean.brew?.note);
-
-  $('officialSource').textContent = safe(bean.sources?.official);
-  $('tastingSource').textContent = safe(bean.sources?.tasting);
-  $('aiDisclosure').textContent = bean.sources?.aiDerived ? '包含系統推導欄位，請與真實資料分開標示。' : '未標示 AI 推導內容。';
-  $('lastUpdated').textContent = safe(bean.sources?.lastUpdated);
-
+  $('#originTitle').textContent = [bean.origin?.farm, bean.origin?.region, bean.origin?.country].filter(Boolean).join(', ');
+  $('#originNotes').textContent = bean.origin?.notes || '';
+  $('#mapAccuracy').textContent = `Map accuracy｜${accuracyLabels[bean.origin?.mapAccuracy] || '未確認'}${bean.sources?.officialSourceName ? `　Source｜${bean.sources.officialSourceName}` : ''}`;
   renderMap(bean);
   renderQr(bean);
-}
 
-function renderTags(targetId, tags) {
-  const target = $(targetId);
-  target.innerHTML = '';
-  tags.forEach((tag) => {
-    const span = document.createElement('span');
-    span.className = 'tag';
-    span.textContent = tag;
-    target.appendChild(span);
-  });
-}
+  renderFacts('#coffeeFacts', [
+    ['烘豆品牌 / 店家', bean.roaster],
+    ['莊園 / 合作社', bean.origin?.farm],
+    ['生產者', bean.origin?.producer],
+    ['海拔', bean.origin?.altitude],
+    ['品種', bean.coffee?.variety],
+    ['處理法', bean.coffee?.process],
+    ['烘焙度', bean.coffee?.roastLevel],
+    ['採收年份', bean.coffee?.harvestYear],
+    ['Lot 編號', bean.coffee?.lotNumber || bean.auction?.lotNumber],
+    ['競賽 / 拍賣', bean.auction?.competition],
+    ['類別', bean.auction?.category],
+    ['排名', bean.auction?.rank]
+  ]);
 
-function renderFlavorNotes(notes) {
-  const target = $('flavorNotes');
-  target.innerHTML = '';
-  if (!Array.isArray(notes) || notes.length === 0) {
-    target.textContent = '尚未填寫風味筆記。';
-    return;
-  }
-  notes.forEach((note) => {
-    const span = document.createElement('span');
-    span.className = 'flavor-note';
-    span.textContent = note;
-    target.appendChild(span);
-  });
-}
+  renderTags('#flavorTags', bean.flavor?.officialNotes || []);
+  $('#flavorDescription').textContent = bean.flavor?.description || '';
+  renderFacts('#flavorFacts', [
+    ['香氣', bean.flavor?.aroma],
+    ['酸質', bean.flavor?.acidity],
+    ['甜感', bean.flavor?.sweetness],
+    ['苦感', bean.flavor?.bitterness],
+    ['醇厚度', bean.flavor?.body],
+    ['餘韻', bean.flavor?.aftertaste]
+  ]);
+  renderScores(bean.flavor?.scores || {});
 
-function renderFlavorChart(scores) {
-  const chart = $('flavorChart');
-  chart.innerHTML = '';
-  Object.entries(labels).forEach(([key, label]) => {
-    const value = clamp(Number(scores[key] || 0), 0, 5);
-    const row = document.createElement('div');
-    row.className = 'flavor-row';
-    row.innerHTML = `
-      <span>${label}</span>
-      <div class="flavor-bar" aria-label="${label} ${value} / 5"><span style="width: ${(value / 5) * 100}%"></span></div>
-      <strong>${value}/5</strong>
-    `;
-    chart.appendChild(row);
-  });
+  renderFacts('#brewFacts', [
+    ['推薦沖煮方式', bean.brew?.method],
+    ['粉水比', bean.brew?.ratio],
+    ['水溫', bean.brew?.waterTemperature],
+    ['研磨度', bean.brew?.grind],
+    ['萃取時間', bean.brew?.time],
+    ['推薦器具', bean.brew?.tools],
+    ['適合飲用方式', bean.brew?.serving]
+  ]);
+
+  renderStory(bean.story || {});
+  renderFacts('#sourceFacts', [
+    ['官方資料來源', sourceLink(bean.sources?.officialSourceName, bean.sources?.officialSourceUrl)],
+    ['杯測 / 品飲來源', bean.sources?.cuppingSource],
+    ['是否包含個人品飲筆記', bean.sources?.personalTasting],
+    ['是否包含 AI 推導內容', bean.sources?.aiDerivedContent],
+    ['最後更新時間', bean.sources?.lastUpdated],
+    ['人格分類依據', bean.personality?.basis]
+  ], true);
 }
 
 function renderMap(bean) {
-  const lat = Number(bean.map?.lat);
-  const lng = Number(bean.map?.lng);
-  const hasLocation = Number.isFinite(lat) && Number.isFinite(lng);
-  const label = bean.map?.label || `${safe(bean.origin?.region)}, ${safe(bean.origin?.country)}`;
-  $('mapLabel').textContent = hasLocation ? `📍 ${label}` : '尚未提供可標註座標';
-  $('mapAccuracy').textContent = accuracyLabel(bean.map?.accuracy);
-
-  if (!map && window.L) {
-    map = L.map('map', {
-      scrollWheelZoom: false,
-      zoomControl: true
-    }).setView([20, 0], 2);
-
+  const lat = Number(bean.origin?.latitude);
+  const lng = Number(bean.origin?.longitude);
+  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
+  if (!mapInstance) {
+    mapInstance = L.map('map', { scrollWheelZoom: false, zoomControl: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(mapInstance);
   }
-
-  if (!map) return;
-
-  if (marker) marker.remove();
-  if (circle) circle.remove();
-
-  if (!hasLocation) {
-    map.setView([20, 0], 2);
+  if (!hasCoordinates) {
+    mapInstance.setView([0, 0], 2);
+    if (mapMarker) mapMarker.remove();
     return;
   }
-
-  const zoom = bean.map?.accuracy === 'farm' ? 11 : bean.map?.accuracy === 'subregion' ? 9 : 7;
-  map.setView([lat, lng], zoom);
-  marker = L.marker([lat, lng]).addTo(map).bindPopup(`<strong>${escapeHtml(label)}</strong><br>${escapeHtml(accuracyLabel(bean.map?.accuracy))}`);
-
-  const radius = bean.map?.accuracy === 'farm' ? 3000 : bean.map?.accuracy === 'subregion' ? 12000 : 30000;
-  circle = L.circle([lat, lng], {
-    radius,
-    color: '#5f3b25',
-    weight: 1,
-    fillColor: '#d8b98a',
-    fillOpacity: 0.18
-  }).addTo(map);
-
-  setTimeout(() => map.invalidateSize(), 80);
+  const zoom = bean.origin?.mapAccuracy === 'farm' ? 12 : bean.origin?.mapAccuracy === 'country' ? 5 : 9;
+  mapInstance.setView([lat, lng], zoom);
+  if (mapMarker) mapMarker.remove();
+  mapMarker = L.marker([lat, lng]).addTo(mapInstance).bindPopup(`<strong>${escapeHtml(bean.name)}</strong><br>${escapeHtml($('#originTitle').textContent)}`);
+  setTimeout(() => mapInstance.invalidateSize(), 120);
 }
 
 function renderQr(bean) {
-  const target = $('qrCode');
-  target.innerHTML = '';
+  const qrTarget = $('#qrCode');
+  qrTarget.innerHTML = '';
   const url = new URL(window.location.href);
   url.searchParams.set('bean', bean.slug);
-  $('qrCaption').textContent = 'QR Code 會連到目前這張咖啡豆資料卡。部署後請用正式網址重新整理。';
-
-  if (window.QRCode?.toCanvas) {
-    const canvas = document.createElement('canvas');
-    target.appendChild(canvas);
-    window.QRCode.toCanvas(canvas, url.href, {
-      width: 210,
-      margin: 1,
-      color: {
-        dark: '#201812',
-        light: '#fff7e9'
-      }
+  if (window.QRCode) {
+    new QRCode(qrTarget, {
+      text: url.toString(),
+      width: 140,
+      height: 140,
+      colorDark: '#2f241b',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
     });
   } else {
-    target.textContent = 'QR Code library not loaded';
+    qrTarget.textContent = url.toString();
   }
 }
 
-function buildPersona(scores, bean) {
-  const acidity = Number(scores.acidity || 0);
-  const aroma = Number(scores.aroma || 0);
-  const body = Number(scores.body || 0);
-  const fermentation = Number(scores.fermentation || 0);
-  const cleanCup = Number(scores.cleanCup || 0);
-  const sweetness = Number(scores.sweetness || 0);
-
-  let type = 'Balanced Daily Type';
-  let reason = '整體分數較平均，適合做為日常飲用型資料卡。';
-
-  if (fermentation >= 4) {
-    type = 'Experimental Fermentation Type';
-    reason = '發酵感分數較高，系統將它歸類為實驗型風味。';
-  } else if (acidity >= 4 && aroma >= 4 && cleanCup >= 4) {
-    type = 'Bright Floral Type';
-    reason = '酸質、香氣與乾淨度較高，系統將它歸類為明亮花果型。';
-  } else if (body >= 4 && sweetness >= 4) {
-    type = 'Sweet Comfort Type';
-    reason = '甜感與醇厚度較高，系統將它歸類為溫潤甜感型。';
-  }
-
-  return `${type}｜${reason}（此欄位為系統根據分數推導，非官方資料。）`;
+function renderMeta(selector, rows) {
+  const filtered = rows.filter(([, value]) => value);
+  $(selector).innerHTML = filtered.map(([label, value]) => `
+    <div class="meta-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>
+  `).join('');
 }
 
-function accuracyLabel(value) {
-  const map = {
-    country: '國家層級',
-    region: '產區層級',
-    subregion: '子產區層級',
-    farm: '莊園層級',
-    unknown: '未確認'
-  };
-  return map[value] || map.unknown;
+function renderFacts(selector, rows, allowHtml = false) {
+  const filtered = rows.filter(([, value]) => value !== undefined && value !== null && value !== '');
+  $(selector).innerHTML = filtered.map(([label, value]) => `
+    <div><dt>${escapeHtml(label)}</dt><dd>${allowHtml ? value : escapeHtml(value)}</dd></div>
+  `).join('');
 }
 
-function safe(value) {
-  if (value === null || value === undefined || value === '') return '—';
-  return String(value);
+function renderTags(selector, tags) {
+  $(selector).innerHTML = toArray(tags).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
 }
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
+function renderScores(scores) {
+  $('#scoreBars').innerHTML = Object.entries(scoreLabels).map(([key, label]) => {
+    const raw = Number(scores[key] || 0);
+    const score = Math.min(5, Math.max(0, raw));
+    return `
+      <div class="score-item">
+        <div class="score-label"><span>${label}</span><span>${score}/5</span></div>
+        <div class="score-track"><div class="score-fill" style="width: ${(score / 5) * 100}%"></div></div>
+      </div>
+    `;
+  }).join('');
 }
 
-function escapeHtml(string) {
-  return String(string)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+function renderStory(story) {
+  const rows = [
+    ['產地背景', story.originBackground],
+    ['莊園 / 生產者故事', story.producerStory],
+    ['處理法說明', story.processingStory],
+    ['系統推導說明', story.systemNote]
+  ].filter(([, value]) => value);
+  $('#storyBlocks').innerHTML = rows.map(([title, body]) => `
+    <div class="story-block"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(body)}</p></div>
+  `).join('');
 }
 
-loadBeans();
+function sourceLink(name, url) {
+  if (!name && !url) return '';
+  if (!url) return escapeHtml(name);
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(name || url)}</a>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
+  }[char]));
+}
+
+init();

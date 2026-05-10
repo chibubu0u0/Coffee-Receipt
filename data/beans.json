@@ -1,116 +1,93 @@
 [
   {
-    "slug": "demo-yirgacheffe-washed",
-    "name": "Demo Bean｜Yirgacheffe Washed",
-    "roaster": "請替換成你的烘豆品牌",
-    "process": "Washed / 水洗",
-    "variety": "Heirloom / Landrace（請依官方資料確認）",
-    "tags": ["範例資料", "花香", "柑橘", "茶感", "產區層級"],
+    "slug": "bop-2025-canvas-of-terroir-demo",
+    "published": true,
+    "name": "Best of Panama Style Demo Lot",
+    "subtitle": "Canvas of Terroir — demo coffee card",
+    "roaster": "Demo Roastery",
     "origin": {
-      "country": "Ethiopia",
-      "region": "Yirgacheffe",
-      "subRegion": "請填子產區，例如 Gedeb / Kochere",
-      "farm": "請填莊園、處理廠或合作社",
-      "producer": "請填生產者或合作社",
-      "altitude": "1,900–2,100 m（範例，請依資料修改）"
+      "country": "Panama",
+      "region": "Chiriquí",
+      "subregion": "Boquete",
+      "farm": "Demo Estate",
+      "producer": "Demo Producer",
+      "altitude": "1,650–1,850 m",
+      "latitude": 8.7802,
+      "longitude": -82.4337,
+      "mapAccuracy": "region",
+      "notes": "This demo origin note is written from location-level data only. Replace it with verified roaster, producer, auction, or importer information."
     },
-    "map": {
-      "label": "Yirgacheffe, Ethiopia",
-      "lat": 6.1629,
-      "lng": 38.2059,
-      "accuracy": "region"
+    "coffee": {
+      "variety": "Geisha",
+      "process": "Washed",
+      "roastLevel": "Light",
+      "roastDate": "",
+      "harvestYear": "2025",
+      "lotNumber": "Demo Lot 01"
     },
-    "roast": {
-      "level": "Light Roast / 淺焙",
-      "date": "請填烘焙日期"
+    "auction": {
+      "competition": "Best of Panama",
+      "theme": "Canvas of Terroir",
+      "category": "Geisha Washed",
+      "rank": "",
+      "cuppingScore": "",
+      "winningBid": "",
+      "winner": "",
+      "auctionDate": "2025"
     },
     "flavor": {
-      "officialNotes": ["白花", "柑橘", "蜂蜜", "紅茶感"],
+      "officialNotes": ["jasmine", "bergamot", "honey", "black tea"],
+      "description": "A clean and elegant profile with floral aromatics, citrus-like acidity, and tea-like finish. This is demo text; replace it with verified notes.",
+      "aroma": "Floral, citrus peel",
+      "acidity": "Bright",
+      "sweetness": "Honey-like",
+      "bitterness": "Low",
+      "body": "Light to medium",
+      "aftertaste": "Long, tea-like",
       "scores": {
-        "acidity": 4,
+        "acidity": 5,
         "sweetness": 4,
         "bitterness": 1,
-        "body": 2,
-        "aroma": 4,
-        "aftertaste": 3,
+        "body": 3,
+        "aroma": 5,
+        "aftertaste": 4,
         "fermentation": 1,
         "cleanCup": 5
       }
     },
     "brew": {
-      "method": "Hand Drip / 手沖",
-      "ratio": "1:15–1:16",
-      "temperature": "90–92°C",
-      "grind": "中細研磨",
+      "method": "V60 / Origami",
+      "ratio": "1:15.5",
+      "waterTemperature": "90–92°C",
+      "grind": "Medium-fine",
       "time": "2:30–3:00",
-      "tool": "V60 / Origami",
-      "note": "此為範例沖煮建議。正式使用時，請依烘豆師建議或你自己的測試結果調整。"
+      "tools": "Paper filter, gooseneck kettle",
+      "serving": "Best enjoyed hot and black"
     },
     "story": {
-      "origin": "這是範例文字。正式頁面請改成基於烘豆商、生豆商或莊園資料的說明，避免無來源的故事化敘述。"
+      "originBackground": "Panama's Boquete region is known for high-altitude coffee production and cool mountain microclimates. Use this section to explain the verified terroir behind the lot.",
+      "producerStory": "Add producer, farm, or cooperative background only when you have a reliable source.",
+      "processingStory": "Explain how the processing method affects the cup profile based on verified processing details.",
+      "systemNote": "Personality or mood labels should be derived from flavor scores and clearly marked as system interpretation."
     },
     "sources": {
-      "official": "範例資料，請替換成豆袋、官網、烘豆商或生豆商來源",
-      "tasting": "尚未填寫實際品飲紀錄",
-      "aiDerived": true,
+      "officialSourceName": "Demo source — replace with official auction / roaster page",
+      "officialSourceUrl": "https://app.bestofpanama.auction/",
+      "cuppingSource": "",
+      "personalTasting": "No",
+      "aiDerivedContent": "Yes — demo classification only",
       "lastUpdated": "2026-05-10"
-    }
-  },
-  {
-    "slug": "template-empty-card",
-    "name": "Template｜空白資料卡",
-    "roaster": "—",
-    "process": "—",
-    "variety": "—",
-    "tags": ["空白模板", "待填寫"],
-    "origin": {
-      "country": "—",
-      "region": "—",
-      "subRegion": "—",
-      "farm": "—",
-      "producer": "—",
-      "altitude": "—"
     },
-    "map": {
-      "label": "未標註",
-      "lat": null,
-      "lng": null,
-      "accuracy": "unknown"
+    "tags": {
+      "flavorFamily": ["floral", "citrus", "tea-like"],
+      "texture": ["clean", "elegant", "bright"],
+      "context": ["morning", "quiet tasting"],
+      "level": "advanced"
     },
-    "roast": {
-      "level": "—",
-      "date": "—"
-    },
-    "flavor": {
-      "officialNotes": [],
-      "scores": {
-        "acidity": 0,
-        "sweetness": 0,
-        "bitterness": 0,
-        "body": 0,
-        "aroma": 0,
-        "aftertaste": 0,
-        "fermentation": 0,
-        "cleanCup": 0
-      }
-    },
-    "brew": {
-      "method": "—",
-      "ratio": "—",
-      "temperature": "—",
-      "grind": "—",
-      "time": "—",
-      "tool": "—",
-      "note": "—"
-    },
-    "story": {
-      "origin": "—"
-    },
-    "sources": {
-      "official": "—",
-      "tasting": "—",
-      "aiDerived": false,
-      "lastUpdated": "—"
+    "personality": {
+      "type": "Floral Archivist",
+      "basis": "High aroma, high acidity, low bitterness, high clean cup score.",
+      "description": "A data-derived label for a bright, floral, clean coffee profile."
     }
   }
 ]

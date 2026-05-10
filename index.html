@@ -3,197 +3,114 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Coffee origin card with verified origin, flavor, brewing, and source data." />
     <title>Coffee Origin Card</title>
-    <meta
-      name="description"
-      content="咖啡豆資料卡：產地地圖、風味數據、沖煮建議與可追溯資料來源。"
-    />
-    <meta property="og:title" content="Coffee Origin Card" />
-    <meta
-      property="og:description"
-      content="掃描 QR Code，查看咖啡豆的產地、故事、風味與沖煮建議。"
-    />
-    <meta property="og:type" content="website" />
     <link rel="preconnect" href="https://unpkg.com" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQvQ1k2uNJIGx9BfF9cc1I5Q5WgLQ4=" crossorigin="" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQAb6SSqGg1NyVPBKgyyN4tZt8PzN6w=" crossorigin="" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="noise"></div>
     <header class="site-header">
-      <a class="brand" href="./">
-        <span class="brand-mark">☕</span>
-        <span>
-          <strong>Coffee Origin Card</strong>
-          <small>Bean Knowledge Base</small>
-        </span>
-      </a>
-      <nav class="header-actions">
-        <a href="#origin">Origin</a>
-        <a href="#flavor">Flavor</a>
-        <a href="#brew">Brew</a>
-        <a href="#source">Source</a>
-      </nav>
+      <div>
+        <p class="eyebrow">Coffee Origin Archive</p>
+        <h1>咖啡豆資料卡</h1>
+        <p class="lead">用產地、風味、沖煮建議與資料來源，建立一張可被掃描收藏的咖啡豆卡片。</p>
+      </div>
+      <a class="admin-link" href="/admin">Admin</a>
     </header>
 
-    <main>
-      <section class="hero card">
-        <div class="eyebrow">QR Coffee Bean Profile</div>
-        <div class="hero-grid">
-          <div>
-            <label class="select-label" for="beanSelect">選擇資料卡</label>
-            <select id="beanSelect" class="bean-select" aria-label="選擇咖啡豆資料卡"></select>
-            <h1 id="beanName">Coffee Bean</h1>
-            <p id="beanSubtitle" class="subtitle"></p>
-            <div id="heroTags" class="tag-row"></div>
-          </div>
-          <aside class="hero-meta" aria-label="咖啡豆摘要">
-            <dl>
-              <div>
-                <dt>Roaster</dt>
-                <dd id="roaster">—</dd>
-              </div>
-              <div>
-                <dt>Process</dt>
-                <dd id="process">—</dd>
-              </div>
-              <div>
-                <dt>Roast</dt>
-                <dd id="roastLevel">—</dd>
-              </div>
-              <div>
-                <dt>Altitude</dt>
-                <dd id="altitude">—</dd>
-              </div>
-            </dl>
-          </aside>
+    <main class="layout">
+      <aside class="bean-list-panel">
+        <div class="panel-title-row">
+          <h2>Beans</h2>
+          <span id="beanCount" class="count-pill">0</span>
         </div>
-      </section>
+        <div id="beanList" class="bean-list" aria-label="Coffee bean list"></div>
+      </aside>
 
-      <section id="origin" class="layout-two">
-        <article class="card map-card">
-          <div class="section-heading">
-            <p class="eyebrow">Origin Map</p>
-            <h2>產地地圖</h2>
-          </div>
-          <div id="map" class="map" role="img" aria-label="咖啡豆產地地圖"></div>
-          <div class="map-footer">
-            <span id="mapLabel">—</span>
-            <span id="mapAccuracy" class="pill">—</span>
-          </div>
-        </article>
-
-        <article class="card origin-copy">
-          <div class="section-heading">
-            <p class="eyebrow">Origin Notes</p>
-            <h2>產地文字說明</h2>
-          </div>
-          <div class="data-grid compact">
-            <div><span>國家</span><strong id="country">—</strong></div>
-            <div><span>產區</span><strong id="region">—</strong></div>
-            <div><span>子產區</span><strong id="subRegion">—</strong></div>
-            <div><span>莊園 / 合作社</span><strong id="farm">—</strong></div>
-            <div><span>生產者</span><strong id="producer">—</strong></div>
-            <div><span>品種</span><strong id="variety">—</strong></div>
-          </div>
-          <p id="originStory" class="body-text"></p>
-          <div class="notice">
-            <strong>地圖精準度</strong>
-            <p id="accuracyNote">—</p>
-          </div>
-        </article>
-      </section>
-
-      <section id="flavor" class="layout-two reversed">
-        <article class="card">
-          <div class="section-heading">
-            <p class="eyebrow">Flavor Data</p>
-            <h2>風味數據</h2>
-          </div>
-          <div class="flavor-chart" id="flavorChart"></div>
-          <p class="microcopy">分數建議由官方杯測、烘豆商資訊或實際品飲紀錄填入；不建議完全由 AI 產生。</p>
-        </article>
-
-        <article class="card">
-          <div class="section-heading">
-            <p class="eyebrow">Tasting Notes</p>
-            <h2>風味筆記</h2>
-          </div>
-          <div id="flavorNotes" class="flavor-notes"></div>
-          <div class="note-block">
-            <h3>官方風味描述</h3>
-            <p id="officialNotes">—</p>
-          </div>
-          <div class="note-block">
-            <h3>系統分類</h3>
-            <p id="personaText">—</p>
-          </div>
-        </article>
-      </section>
-
-      <section id="brew" class="layout-three">
-        <article class="card span-two">
-          <div class="section-heading">
-            <p class="eyebrow">Brew Guide</p>
-            <h2>沖煮建議</h2>
-          </div>
-          <div class="brew-grid">
-            <div><span>推薦方式</span><strong id="brewMethod">—</strong></div>
-            <div><span>粉水比</span><strong id="brewRatio">—</strong></div>
-            <div><span>水溫</span><strong id="brewTemp">—</strong></div>
-            <div><span>研磨度</span><strong id="brewGrind">—</strong></div>
-            <div><span>萃取時間</span><strong id="brewTime">—</strong></div>
-            <div><span>推薦器具</span><strong id="brewTool">—</strong></div>
-          </div>
-          <p id="brewNote" class="body-text"></p>
-        </article>
-
-        <article class="card qr-card">
-          <div class="section-heading">
-            <p class="eyebrow">Share</p>
-            <h2>QR Code</h2>
-          </div>
-          <div id="qrCode" class="qr-box" aria-label="目前頁面 QR Code"></div>
-          <p id="qrCaption" class="microcopy"></p>
-        </article>
-      </section>
-
-      <section id="source" class="card source-card">
-        <div class="section-heading">
-          <p class="eyebrow">Data Source</p>
-          <h2>資料來源與透明度</h2>
+      <section class="card-shell" aria-live="polite">
+        <div id="emptyState" class="empty-state" hidden>
+          <h2>找不到咖啡豆資料</h2>
+          <p>請確認 <code>data/beans.json</code> 內至少有一筆 <code>published: true</code> 的資料。</p>
         </div>
-        <div class="source-grid">
-          <div>
-            <span>官方資料來源</span>
-            <strong id="officialSource">—</strong>
-          </div>
-          <div>
-            <span>品飲資料來源</span>
-            <strong id="tastingSource">—</strong>
-          </div>
-          <div>
-            <span>AI 推導內容</span>
-            <strong id="aiDisclosure">—</strong>
-          </div>
-          <div>
-            <span>最後更新</span>
-            <strong id="lastUpdated">—</strong>
-          </div>
-        </div>
-        <p class="body-text source-explain">
-          建議把「官方資料」、「實際品飲」、「系統推導」分開標示。像人格分類、情境推薦可以是系統推導，但產地、處理法、海拔、風味描述應盡量保留來源。
-        </p>
+
+        <article id="beanCard" class="bean-card" hidden>
+          <section class="hero-card">
+            <div>
+              <p class="eyebrow" id="competitionLabel">Origin Card</p>
+              <h2 id="beanName"></h2>
+              <p id="beanSubtitle" class="subtitle"></p>
+              <div class="meta-grid compact" id="heroMeta"></div>
+            </div>
+            <div class="qr-box">
+              <div id="qrCode" class="qr-code"></div>
+              <p>Scan for this card</p>
+            </div>
+          </section>
+
+          <section class="two-column">
+            <div class="panel map-panel">
+              <div class="section-heading">
+                <p class="eyebrow">Origin Map</p>
+                <h3 id="originTitle"></h3>
+              </div>
+              <div id="map" class="map"></div>
+              <p id="mapAccuracy" class="small-note"></p>
+              <p id="originNotes" class="body-copy"></p>
+            </div>
+
+            <div class="panel">
+              <div class="section-heading">
+                <p class="eyebrow">Coffee Data</p>
+                <h3>基本資料</h3>
+              </div>
+              <dl id="coffeeFacts" class="fact-list"></dl>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <p class="eyebrow">Flavor Profile</p>
+              <h3>風味與感官數據</h3>
+            </div>
+            <div id="flavorTags" class="tag-row"></div>
+            <p id="flavorDescription" class="body-copy"></p>
+            <div class="flavor-grid">
+              <dl id="flavorFacts" class="fact-list"></dl>
+              <div id="scoreBars" class="score-bars"></div>
+            </div>
+          </section>
+
+          <section class="two-column">
+            <div class="panel">
+              <div class="section-heading">
+                <p class="eyebrow">Brew Guide</p>
+                <h3>沖煮建議</h3>
+              </div>
+              <dl id="brewFacts" class="fact-list"></dl>
+            </div>
+            <div class="panel">
+              <div class="section-heading">
+                <p class="eyebrow">Story & Traceability</p>
+                <h3>背景故事</h3>
+              </div>
+              <div id="storyBlocks" class="story-blocks"></div>
+            </div>
+          </section>
+
+          <section class="panel source-panel">
+            <div class="section-heading">
+              <p class="eyebrow">Sources</p>
+              <h3>資料來源與推導說明</h3>
+            </div>
+            <dl id="sourceFacts" class="fact-list"></dl>
+          </section>
+        </article>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <span>Coffee Origin Card v0.1</span>
-      <span>Editable from <code>data/beans.json</code></span>
-    </footer>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="./app.js"></script>
+    <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="/app.js"></script>
   </body>
 </html>
