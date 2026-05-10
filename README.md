@@ -1,50 +1,66 @@
-# Coffee Origin Card — Firebase Private Config v4
+# Coffee Origin Card — Firebase v5 Quick Import
 
-此版本修正 `/admin` 登入前顯示邏輯：
+這是 Firebase Firestore 版咖啡豆資料卡，加入 `/admin` 快速導入功能。
 
-- 未登入時，只顯示 Email / Password / 登入按鈕。
-- 未登入時，後台標題、回前台、咖啡豆表單、CSV 匯入全部隱藏。
-- 登入成功後，才顯示完整管理介面。
-- 修正 CSS `hidden` 被覆蓋造成未登入仍顯示管理區塊的問題。
+## 功能
 
-部署方式與前一版相同：上傳到 GitHub，Vercel 重新 Deploy；原本的 Firebase Environment Variables 不需要重填。
+- `/`：前台咖啡豆資料卡，讀取 Firestore `coffee_beans` 裡 `published = true` 的資料
+- `/admin`：登入前只顯示登入畫面；登入後才顯示完整後台
+- 後台可新增 / 編輯 / 刪除咖啡豆
+- 後台可 CSV 檔案批量匯入
+- 新增「快速導入」：
+  - 貼網址解析
+  - 貼頁面文字解析
+  - 貼 CSV 文字解析
+  - 解析後先預覽，再套用到表單或儲存到 Firestore
+- 新增 Vercel API：`/api/parse-bean-url`
+- Firebase config 不放在 GitHub，改由 `/api/firebase-config` 讀取 Vercel Environment Variables
 
-# Coffee Origin Card — Firebase Version
+## Vercel 設定
 
-這是 Firebase Firestore 版咖啡豆資料卡。
+此版本是純靜態網站 + Vercel API，不是 Vite。
 
-- `/`：前台，讀取 Firestore `coffee_beans` 裡 `published = true` 的資料
-- `/admin`：登入前只顯示登入畫面；登入後才顯示後台管理介面，可新增 / 編輯 / 刪除咖啡豆
-- 不需要 Supabase
-- 不需要每次更新資料都 redeploy
+| Vercel 欄位 | 填法 |
+|---|---|
+| Framework Preset | Other |
+| Root Directory | 看得到 `index.html` 的那一層 |
+| Build Command | 留空 |
+| Output Directory | `.` |
+| Install Command | 留空 |
 
-## 1. Firebase 必要設定
+## Vercel Environment Variables
+
+請到 Vercel → Project Settings → Environment Variables 新增：
+
+```txt
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_MEASUREMENT_ID=
+```
+
+`FIREBASE_MEASUREMENT_ID` 可以留空。其他 6 個必填。
+
+## Firebase 必要設定
 
 ### Authentication
 
-到 Firebase Console：
-
-`Build → Authentication → Sign-in method`
+Firebase Console → Build → Authentication → Sign-in method
 
 啟用：
 
-`Email/Password`
+```txt
+Email/Password
+```
 
-然後到：
-
-`Users → Add user`
-
-新增管理者帳號：
-
-`your-admin-email@example.com`
+然後到 Users 新增管理者帳號。
 
 ### Firestore Rules
 
-到：
-
-`Firestore Database → Rules`
-
-貼上：
+Firestore Database → Rules：
 
 ```js
 rules_version = '2';
@@ -65,65 +81,47 @@ service cloud.firestore {
 }
 ```
 
-按 Publish。
+把 `your-admin-email@example.com` 改成你的管理者 Email 後按 Publish。
 
-## 2. Vercel 部署設定
+## 快速導入說明
 
-這版是純靜態網站，不是 Vite。
+登入 `/admin` 後會看到「快速導入資料」區塊。
 
-| Vercel 欄位 | 填法 |
-|---|---|
-| Framework Preset | Other |
-| Root Directory | 看得到 `index.html` 的那一層 |
-| Build Command | 留空 |
-| Output Directory | `.` |
-| Install Command | 留空 |
-| Environment Variables | 不用填 |
+### 1. 貼網址解析
 
-## 3. Firebase Config
+貼上 Best of Panama / 烘豆商商品頁 URL，按「解析網址」。
 
-Firebase 設定放在：
+注意：有些網站是 JavaScript 動態渲染，API 不一定能讀到完整內容。這時可改用「貼頁面文字解析」。
 
-`firebase-config.js`
+### 2. 貼頁面文字解析
 
-這些 Web App config 不是 service role key。真正的安全性由 Firestore Rules 控制。
+把商品頁上看得到的公開文字複製到文字框，按「解析文字」。系統會嘗試抓：
 
-不要把 Firebase Auth 密碼、Google 帳號密碼、service account、private key 放進專案。
+- 咖啡豆名稱
+- Lot 編號
+- 國家 / 產區 / 子產區
+- 莊園 / 生產者
+- 品種 / 處理法 / 海拔
+- 杯測分數
+- 得標價格 / 得標者
+- 風味標籤
+- 地圖精準度
 
-## 4. CSV 匯入
+### 3. 貼 CSV 解析
 
-登入 `/admin` 後，可下載 CSV 範本。
-
-重要欄位：
+第一列是欄位名稱，例如：
 
 ```csv
-name,slug,country,region,farm,producer,variety,process,altitude,roastLevel,officialFlavor,flavorNotes,cuppingScore,latitude,longitude,mapAccuracy,published,sourceOfficial
+name,slug,country,region,process,cuppingScore,published
+Panama Geisha Demo,panama-geisha-demo,Panama,Boquete,Washed,90,true
 ```
 
-`flavorNotes` 可用 `|` 分隔，例如：
+解析後會進入預覽。你可以套用第一筆到表單，也可以直接儲存第一筆或全部儲存。
 
-```txt
-jasmine|bergamot|honey
-```
+## 建議資料原則
 
-## 5. 建議資料原則
-
-- 官方資料、品飲筆記、AI 推導內容要分開標示
+- 官方資料、品飲筆記、AI / 系統推導內容要分開標示
 - 沒有精確莊園座標時，不要假裝成莊園級定位
-- 地圖精準度可填：`country`、`region`、`subregion`、`farm`
+- `mapAccuracy` 可填：`country`、`region`、`subregion`、`farm`
+- 從快速導入產生的資料建議先確認，再把 `published` 設為 true
 
-## Vercel Environment Variables
-
-請到 Vercel → Project Settings → Environment Variables 新增：
-
-```txt
-FIREBASE_API_KEY=
-FIREBASE_AUTH_DOMAIN=
-FIREBASE_PROJECT_ID=
-FIREBASE_STORAGE_BUCKET=
-FIREBASE_MESSAGING_SENDER_ID=
-FIREBASE_APP_ID=
-FIREBASE_MEASUREMENT_ID=
-```
-
-`FIREBASE_MEASUREMENT_ID` 可留空。

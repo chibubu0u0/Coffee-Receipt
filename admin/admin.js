@@ -47,24 +47,63 @@ const els = {
   csvFile: document.getElementById('csvFile'),
   importCsvBtn: document.getElementById('importCsvBtn'),
   importLog: document.getElementById('importLog'),
-  downloadTemplateBtn: document.getElementById('downloadTemplateBtn')
+  downloadTemplateBtn: document.getElementById('downloadTemplateBtn'),
+  quickUrl: document.getElementById('quickUrl'),
+  parseUrlBtn: document.getElementById('parseUrlBtn'),
+  quickText: document.getElementById('quickText'),
+  parseTextBtn: document.getElementById('parseTextBtn'),
+  quickCsv: document.getElementById('quickCsv'),
+  parseCsvTextBtn: document.getElementById('parseCsvTextBtn'),
+  quickImportLog: document.getElementById('quickImportLog'),
+  quickPreview: document.getElementById('quickPreview'),
+  applyPreviewBtn: document.getElementById('applyPreviewBtn'),
+  savePreviewBtn: document.getElementById('savePreviewBtn'),
+  saveAllPreviewBtn: document.getElementById('saveAllPreviewBtn')
 };
 
 let beans = [];
 let activeId = '';
+let quickPreviewBeans = [];
 
 const fields = [
   'name','slug','country','region','subregion','farm','producer','variety','process','altitude','roastLevel','cuppingScore','published',
-  'competitionName','category','lotNumber','rank','bidPrice','winningBidder',
+  'competitionName','auctionTheme','category','lotNumber','code','rank','bidPrice','priceUnit','winningBidder','boxes','weight',
   'officialFlavor','flavorNotes','tags',
   'acidityScore','sweetnessScore','bitternessScore','bodyScore','aromaScore','aftertasteScore','fermentationScore','cleanScore',
   'latitude','longitude','mapAccuracy',
   'brewMethod','brewRatio','brewTemp','grind','brewTime',
-  'storyOrigin','storyProducer','processNote','sourceOfficial','sourceCupping','sourcePersonal'
+  'storyOrigin','storyProducer','processNote','sourceUrl','sourceOfficial','sourceCupping','sourcePersonal'
 ];
 
-const numericFields = new Set(['cuppingScore','acidityScore','sweetnessScore','bitternessScore','bodyScore','aromaScore','aftertasteScore','fermentationScore','cleanScore','latitude','longitude']);
+const numericFields = new Set([
+  'cuppingScore','acidityScore','sweetnessScore','bitternessScore','bodyScore','aromaScore','aftertasteScore','fermentationScore','cleanScore',
+  'latitude','longitude','boxes','weight'
+]);
 const arrayFields = new Set(['flavorNotes','tags']);
+
+const headerAliases = {
+  bean: 'name', beanName: 'name', title: 'name', coffee: 'name', coffeeName: 'name',
+  lot: 'lotNumber', lotCode: 'lotNumber', lotNo: 'lotNumber', rankNo: 'rank',
+  theme: 'auctionTheme', auction: 'competitionName', auctionName: 'competitionName', competition: 'competitionName',
+  price: 'bidPrice', bid: 'bidPrice', winningPrice: 'bidPrice', bidder: 'winningBidder', winner: 'winningBidder',
+  score: 'cuppingScore', cupping: 'cuppingScore', cupping_score: 'cuppingScore',
+  flavor: 'officialFlavor', flavors: 'officialFlavor', officialFlavorDescription: 'officialFlavor',
+  notes: 'flavorNotes', flavor_tags: 'flavorNotes',
+  lat: 'latitude', lng: 'longitude', lon: 'longitude', long: 'longitude',
+  url: 'sourceUrl', source: 'sourceOfficial', sourceURL: 'sourceUrl', sourceUrl: 'sourceUrl',
+  subRegion: 'subregion', sub_area: 'subregion', map_accuracy: 'mapAccuracy',
+  processMethod: 'process', processing: 'process'
+};
+
+function canonicalKey(header) {
+  const trimmed = String(header || '').trim();
+  if (!trimmed) return '';
+  if (fields.includes(trimmed)) return trimmed;
+  const camel = trimmed
+    .replace(/^[\s_\-]+|[\s_\-]+$/g, '')
+    .replace(/[\s_\-]+([a-zA-Z0-9])/g, (_, c) => c.toUpperCase());
+  return headerAliases[trimmed] || headerAliases[camel] || camel;
+}
 
 function slugify(text) {
   return String(text || '')
@@ -92,6 +131,34 @@ function toBool(value) {
   return ['true','1','yes','y','公開','是','published'].includes(s);
 }
 
+function cleanNumberText(value) {
+  return String(value || '').replace(/[$,]/g, '').trim();
+}
+
+function normalizeBean(bean) {
+  const normalized = { ...bean };
+
+  arrayFields.forEach(field => {
+    if (normalized[field] !== undefined) normalized[field] = parseArray(normalized[field]);
+  });
+
+  numericFields.forEach(field => {
+    if (normalized[field] === undefined || normalized[field] === '') return;
+    const n = Number(cleanNumberText(normalized[field]));
+    if (Number.isFinite(n)) normalized[field] = n;
+    else delete normalized[field];
+  });
+
+  if (normalized.published !== undefined) normalized.published = toBool(normalized.published);
+  if (!normalized.slug && normalized.name) normalized.slug = slugify(normalized.name);
+
+  Object.keys(normalized).forEach(key => {
+    if (normalized[key] === '' || normalized[key] === null || normalized[key] === undefined) delete normalized[key];
+  });
+
+  return normalized;
+}
+
 function formToBean() {
   const data = new FormData(els.beanForm);
   const bean = {};
@@ -109,7 +176,7 @@ function formToBean() {
     }
     if (numericFields.has(field)) {
       if (value === '' || value === null) return;
-      const n = Number(value);
+      const n = Number(cleanNumberText(value));
       if (Number.isFinite(n)) bean[field] = n;
       return;
     }
@@ -149,6 +216,14 @@ function status(message, isError = false) {
   }, 5000);
 }
 
+function importStatus(message) {
+  els.importLog.textContent = message;
+}
+
+function quickStatus(message) {
+  els.quickImportLog.textContent = message;
+}
+
 function renderBeanList() {
   if (!beans.length) {
     els.beanList.innerHTML = '<p class="muted">目前沒有資料。</p>';
@@ -173,6 +248,17 @@ async function loadBeans() {
   beans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
   beans.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant'));
   renderBeanList();
+}
+
+async function addBeanToFirestore(bean) {
+  const normalized = normalizeBean(bean);
+  if (!normalized.name) throw new Error('請至少填寫咖啡豆名稱。');
+  const docRef = await addDoc(collection(db, collectionName), {
+    ...normalized,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  return docRef.id;
 }
 
 async function saveBean(event) {
@@ -259,7 +345,7 @@ function parseCSV(text) {
 function rowToBean(headers, row) {
   const bean = {};
   headers.forEach((header, index) => {
-    const key = header.trim();
+    const key = canonicalKey(header);
     if (!key) return;
     const raw = row[index] ?? '';
     if (key === 'published') {
@@ -268,21 +354,20 @@ function rowToBean(headers, row) {
       bean[key] = String(raw || '').split(/[|;]/).map(item => item.trim()).filter(Boolean);
     } else if (numericFields.has(key)) {
       if (String(raw).trim() === '') return;
-      const n = Number(raw);
+      const n = Number(cleanNumberText(raw));
       if (Number.isFinite(n)) bean[key] = n;
     } else {
       const value = String(raw || '').trim();
       if (value !== '') bean[key] = value;
     }
   });
-  if (!bean.slug && bean.name) bean.slug = slugify(bean.name);
-  return bean;
+  return normalizeBean(bean);
 }
 
 async function importCSV() {
   const file = els.csvFile.files?.[0];
   if (!file) {
-    els.importLog.textContent = '請先選擇 CSV 檔案。';
+    importStatus('請先選擇 CSV 檔案。');
     return;
   }
   try {
@@ -291,18 +376,14 @@ async function importCSV() {
     if (rows.length < 2) throw new Error('CSV 至少需要標題列與一筆資料。');
     const headers = rows[0];
     let count = 0;
-    els.importLog.textContent = '匯入中…\n';
+    importStatus('匯入中…\n');
     for (const row of rows.slice(1)) {
       const bean = rowToBean(headers, row);
       if (!bean.name) {
         els.importLog.textContent += '跳過一筆：沒有 name。\n';
         continue;
       }
-      await addDoc(collection(db, collectionName), {
-        ...bean,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      await addBeanToFirestore(bean);
       count += 1;
       els.importLog.textContent += `已匯入：${bean.name}\n`;
     }
@@ -310,16 +391,18 @@ async function importCSV() {
     await loadBeans();
   } catch (error) {
     console.error(error);
-    els.importLog.textContent = `匯入失敗：${error.message}`;
+    importStatus(`匯入失敗：${error.message}`);
   }
 }
 
 function downloadCSVTemplate() {
   const headers = [
-    'name','slug','country','region','farm','producer','variety','process','altitude','roastLevel','officialFlavor','flavorNotes','cuppingScore','latitude','longitude','mapAccuracy','published','sourceOfficial'
+    'name','slug','country','region','subregion','farm','producer','variety','process','altitude','roastLevel','officialFlavor','flavorNotes','cuppingScore','competitionName','auctionTheme','category','lotNumber','code','bidPrice','priceUnit','winningBidder','boxes','weight','latitude','longitude','mapAccuracy','published','sourceUrl','sourceOfficial'
   ];
   const sample = [
-    'Panama Geisha Demo','panama-geisha-demo','Panama','Boquete','Demo Farm','Demo Producer','Geisha','Washed','1600-1800m','Light','Jasmine, bergamot, honey','jasmine|bergamot|honey','90','8.779','-82.433','region','true','Best of Panama / Roaster info'
+    'GW-01 Hacienda La Esmeralda Geisha Washed','gw-01-hacienda-la-esmeralda-geisha-washed','Panama','Cañas Verdes','Nido region, Cañas Verdes','Hacienda La Esmeralda','Hacienda La Esmeralda','Geisha','Washed','2050 masl','',
+    'Super floral, tangerine, mandarin, white peach, guava, jasmine, lemongrass, bergamot, pineapple, raspberry, citrus, honey, long aftertaste',
+    'jasmine|bergamot|honey|white peach','98','Best of Panama 2025 Auction','Canvas of Terroir','Geisha Washed','GW-01','G652','30204','USD/kg','Julith Coffee','2','20','8.761466','-82.49159','region','true','https://app.bestofpanama.auction/auction/canvas-of-terroir?product=3981','Best of Panama 2025 Auction product page'
   ];
   const csv = `${headers.join(',')}\n${sample.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')}\n`;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -329,6 +412,242 @@ function downloadCSVTemplate() {
   a.download = 'coffee-beans-template.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function findFirst(text, patterns) {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return (match[1] || match[0]).trim();
+  }
+  return '';
+}
+
+function collectFlavorNotes(text) {
+  const candidates = [
+    'jasmine','bergamot','tangerine','mandarin','white peach','peach','guava','sherbet','lemongrass','pineapple','raspberry','citrus','honey',
+    'orange','lemon','lime','floral','super floral','tea','black tea','green tea','chocolate','cacao','caramel','brown sugar','vanilla','winey','stone fruit','berries','strawberry','blueberry'
+  ];
+  const lower = text.toLowerCase();
+  return candidates.filter(item => lower.includes(item.toLowerCase())).slice(0, 14);
+}
+
+function parseTextToBean(rawText, sourceUrl = '') {
+  const text = String(rawText || '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').trim();
+  if (!text) throw new Error('請先貼上頁面文字。');
+
+  const lower = text.toLowerCase();
+  const notes = collectFlavorNotes(text);
+  const lotNumber = findFirst(text, [/\b((?:GW|GN|V|VA|PN)-?\d{1,2})\b/i]);
+  const cuppingScore = findFirst(text, [
+    /(?:score|cupping score|cup score|points?)\s*[:：]?\s*(\d{2,3}(?:\.\d+)?)/i,
+    /(\d{2,3}(?:\.\d+)?)\s*(?:points|pts)/i
+  ]);
+  const bidPrice = findFirst(text, [
+    /(?:US\$|USD|\$)\s*([\d,]+(?:\.\d+)?)\s*\/\s*kg/i,
+    /(?:price|bid|winning price)\s*[:：]?\s*(?:US\$|USD|\$)?\s*([\d,]+(?:\.\d+)?)/i
+  ]);
+  const winner = findFirst(text, [/(?:winner|winning bidder|buyer)\s*[:：]?\s*([^\n\r]+)/i]);
+  const code = findFirst(text, [/(?:code)\s*[:：]?\s*([A-Z]\d{2,5})/i, /\b([A-Z]\d{3,4})\b/]);
+  const altitude = findFirst(text, [/(\d{3,4}\s*(?:masl|m\.a\.s\.l\.|meters|metres|m))/i]);
+  const boxes = findFirst(text, [/(?:boxes)\s*[:：]?\s*(\d+)/i]);
+  const weight = findFirst(text, [/(?:weight)\s*[:：]?\s*([\d.]+)\s*(?:kg|kgs|kilograms)?/i]);
+
+  const bean = {
+    sourceUrl,
+    published: false,
+    sourceOfficial: sourceUrl ? `Imported from ${sourceUrl}` : 'Imported from pasted page text'
+  };
+
+  if (lotNumber) bean.lotNumber = lotNumber.toUpperCase().replace(/^(GW|GN|VA|PN)(\d)/i, '$1-$2');
+  if (code) bean.code = code;
+  if (cuppingScore) bean.cuppingScore = cuppingScore;
+  if (bidPrice) bean.bidPrice = bidPrice;
+  if (bidPrice) bean.priceUnit = 'USD/kg';
+  if (winner) bean.winningBidder = winner.replace(/\s{2,}.*/, '').trim();
+  if (altitude) bean.altitude = altitude;
+  if (boxes) bean.boxes = boxes;
+  if (weight) bean.weight = weight;
+
+  if (/best of panama/i.test(text) || /bestofpanama/i.test(sourceUrl)) {
+    bean.competitionName = 'Best of Panama 2025 Auction';
+    if (/canvas of terroir/i.test(text) || /canvas-of-terroir/i.test(sourceUrl)) bean.auctionTheme = 'Canvas of Terroir';
+    bean.country = 'Panama';
+  }
+  if (/geisha washed/i.test(text) || /^GW/i.test(bean.lotNumber || '')) bean.category = 'Geisha Washed';
+  if (/geisha natural/i.test(text) || /^GN/i.test(bean.lotNumber || '')) bean.category = 'Geisha Natural';
+  if (/varietal/i.test(text) || /^V/i.test(bean.lotNumber || '')) bean.category = bean.category || 'Varietals';
+
+  if (/geisha/i.test(text)) bean.variety = 'Geisha';
+  if (/washed/i.test(text)) bean.process = 'Washed';
+  else if (/natural/i.test(text)) bean.process = 'Natural';
+  else if (/honey/i.test(text)) bean.process = 'Honey';
+  else if (/anaerobic/i.test(text)) bean.process = 'Anaerobic';
+
+  if (/hacienda la esmeralda/i.test(text)) {
+    bean.farm = 'Hacienda La Esmeralda';
+    bean.producer = 'Hacienda La Esmeralda';
+  }
+  if (/cañas verdes|canas verdes/i.test(text)) bean.region = 'Cañas Verdes';
+  else if (/boquete/i.test(text)) bean.region = 'Boquete';
+  if (/nido region/i.test(text)) bean.subregion = 'Nido region, Cañas Verdes';
+
+  const titleLine = findFirst(text, [
+    /\b((?:GW|GN|V|VA|PN)-?\d{1,2}\s+[^\n\r]{8,120})/i,
+    /(Hacienda\s+La\s+Esmeralda\s+Geisha\s+Washed)/i,
+    /(Hacienda\s+La\s+Esmeralda[^\n\r]{0,80})/i
+  ]);
+  if (titleLine) bean.name = titleLine.replace(/\s{2,}/g, ' ').trim();
+  if (!bean.name && bean.lotNumber && bean.farm && bean.variety) bean.name = `${bean.lotNumber} ${bean.farm} ${bean.variety} ${bean.process || ''}`.trim();
+
+  if (notes.length) {
+    bean.flavorNotes = notes;
+    bean.officialFlavor = notes.join(', ');
+  }
+
+  if (/cool temperature/i.test(text) || /cold-temperature|cold temperature/i.test(text)) {
+    bean.processNote = 'Cool Temperature Washed Fermentation with Climate Controlled Drying';
+  }
+  if (/peterson family/i.test(text) || /2004/i.test(text)) {
+    bean.storyProducer = 'The page mentions the Peterson family and Hacienda La Esmeralda’s role in bringing the Geisha varietal to global specialty coffee attention.';
+  }
+
+  if (bean.region === 'Cañas Verdes') {
+    bean.latitude = 8.761466;
+    bean.longitude = -82.49159;
+    bean.mapAccuracy = 'region';
+    bean.sourcePersonal = 'Map coordinates are region-level approximation for Cañas Verdes / Boquete, not exact farm coordinates.';
+  }
+
+  return normalizeBean(bean);
+}
+
+function renderQuickPreview() {
+  const count = quickPreviewBeans.length;
+  els.applyPreviewBtn.disabled = count === 0;
+  els.savePreviewBtn.disabled = count === 0;
+  els.saveAllPreviewBtn.disabled = count === 0;
+
+  if (!count) {
+    els.quickPreview.innerHTML = '';
+    return;
+  }
+
+  els.quickPreview.innerHTML = quickPreviewBeans.map((bean, index) => `
+    <article class="preview-item">
+      <div>
+        <strong>${bean.name || 'Untitled Coffee Bean'}</strong>
+        <span>${[bean.country, bean.region, bean.process, bean.variety].filter(Boolean).join(' · ') || '尚未填寫基本資料'}</span>
+      </div>
+      <dl>
+        <div><dt>分數</dt><dd>${bean.cuppingScore ?? '—'}</dd></div>
+        <div><dt>Lot</dt><dd>${bean.lotNumber ?? '—'}</dd></div>
+        <div><dt>價格</dt><dd>${bean.bidPrice ? `${bean.bidPrice} ${bean.priceUnit || ''}` : '—'}</dd></div>
+        <div><dt>Published</dt><dd>${bean.published ? 'true' : 'false'}</dd></div>
+      </dl>
+      <div class="preview-actions">
+        <button type="button" class="secondary" data-apply-preview="${index}">套用到表單</button>
+        <button type="button" data-save-preview="${index}">儲存這筆</button>
+      </div>
+    </article>
+  `).join('');
+
+  els.quickPreview.querySelectorAll('[data-apply-preview]').forEach(button => {
+    button.addEventListener('click', () => applyPreviewBean(Number(button.dataset.applyPreview)));
+  });
+  els.quickPreview.querySelectorAll('[data-save-preview]').forEach(button => {
+    button.addEventListener('click', () => savePreviewBean(Number(button.dataset.savePreview)));
+  });
+}
+
+function setQuickPreview(beansInput, message) {
+  quickPreviewBeans = beansInput.map(bean => normalizeBean(bean)).filter(bean => bean.name);
+  quickStatus(message || `已解析 ${quickPreviewBeans.length} 筆資料。請確認後再儲存。`);
+  renderQuickPreview();
+}
+
+function applyPreviewBean(index = 0) {
+  const bean = quickPreviewBeans[index];
+  if (!bean) return;
+  fillForm({ ...bean, id: '' });
+  status('已套用到表單。請檢查後儲存。');
+  document.querySelector('.editor-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function savePreviewBean(index = 0) {
+  const bean = quickPreviewBeans[index];
+  if (!bean) return;
+  try {
+    const id = await addBeanToFirestore(bean);
+    quickStatus(`已儲存：${bean.name}\nDocument ID: ${id}`);
+    await loadBeans();
+  } catch (error) {
+    console.error(error);
+    quickStatus(`儲存失敗：${error.message}`);
+  }
+}
+
+async function saveAllPreviewBeans() {
+  if (!quickPreviewBeans.length) return;
+  const ok = window.confirm(`確定要儲存 ${quickPreviewBeans.length} 筆資料到 Firestore 嗎？`);
+  if (!ok) return;
+  try {
+    let count = 0;
+    quickStatus('全部儲存中…\n');
+    for (const bean of quickPreviewBeans) {
+      await addBeanToFirestore(bean);
+      count += 1;
+      els.quickImportLog.textContent += `已儲存：${bean.name}\n`;
+    }
+    els.quickImportLog.textContent += `完成，共儲存 ${count} 筆。`;
+    await loadBeans();
+  } catch (error) {
+    console.error(error);
+    quickStatus(`儲存失敗：${error.message}`);
+  }
+}
+
+async function parseUrlImport() {
+  const url = els.quickUrl.value.trim();
+  if (!url) {
+    quickStatus('請先貼上 URL。');
+    return;
+  }
+  try {
+    quickStatus('解析網址中…');
+    const response = await fetch(`/api/parse-bean-url?url=${encodeURIComponent(url)}`, { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'URL 解析失敗。');
+    const parsed = (data.beans || []).map(bean => normalizeBean(bean)).filter(bean => bean.name);
+    if (!parsed.length) throw new Error('沒有從網址解析到可用資料。你可以改用「貼頁面文字解析」。');
+    setQuickPreview(parsed, `${data.message || '網址解析完成。'}\n${data.note || '請確認欄位後再儲存。'}`);
+  } catch (error) {
+    console.error(error);
+    quickStatus(`解析網址失敗：${error.message}\n建議：從網頁複製公開文字，貼到「貼頁面文字解析」。`);
+  }
+}
+
+function parseTextImport() {
+  try {
+    const bean = parseTextToBean(els.quickText.value, els.quickUrl.value.trim());
+    setQuickPreview([bean], '文字解析完成。系統只會根據貼上的文字與明顯欄位推測，請確認後再儲存。');
+  } catch (error) {
+    console.error(error);
+    quickStatus(`文字解析失敗：${error.message}`);
+  }
+}
+
+function parseCsvTextImport() {
+  try {
+    const rows = parseCSV(els.quickCsv.value);
+    if (rows.length < 2) throw new Error('CSV 至少需要標題列與一筆資料。');
+    const headers = rows[0];
+    const parsed = rows.slice(1).map(row => rowToBean(headers, row)).filter(bean => bean.name);
+    if (!parsed.length) throw new Error('沒有找到含 name 的資料列。');
+    setQuickPreview(parsed, `CSV 解析完成，共 ${parsed.length} 筆。`);
+  } catch (error) {
+    console.error(error);
+    quickStatus(`CSV 解析失敗：${error.message}`);
+  }
 }
 
 function attachEventListeners() {
@@ -351,6 +670,13 @@ function attachEventListeners() {
   els.newBeanBtn.addEventListener('click', () => fillForm({}));
   els.importCsvBtn.addEventListener('click', importCSV);
   els.downloadTemplateBtn.addEventListener('click', downloadCSVTemplate);
+  els.parseUrlBtn.addEventListener('click', parseUrlImport);
+  els.parseTextBtn.addEventListener('click', parseTextImport);
+  els.parseCsvTextBtn.addEventListener('click', parseCsvTextImport);
+  els.applyPreviewBtn.addEventListener('click', () => applyPreviewBean(0));
+  els.savePreviewBtn.addEventListener('click', () => savePreviewBean(0));
+  els.saveAllPreviewBtn.addEventListener('click', saveAllPreviewBeans);
+
   els.beanForm.elements.name.addEventListener('input', event => {
     const slugInput = els.beanForm.elements.slug;
     if (!activeId && !slugInput.value) slugInput.value = slugify(event.target.value);

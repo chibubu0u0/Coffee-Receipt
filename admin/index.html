@@ -73,11 +73,16 @@
               <h3>Best of Panama / 拍賣欄位</h3>
               <div class="form-grid">
                 <label>競賽 / 拍賣名稱<input name="competitionName" /></label>
+                <label>拍賣主題<input name="auctionTheme" placeholder="Canvas of Terroir" /></label>
                 <label>類別<input name="category" /></label>
                 <label>Lot 編號<input name="lotNumber" /></label>
+                <label>Code<input name="code" /></label>
                 <label>排名<input name="rank" /></label>
                 <label>得標價格<input name="bidPrice" /></label>
+                <label>價格單位<input name="priceUnit" placeholder="USD/kg" /></label>
                 <label>得標者<input name="winningBidder" /></label>
+                <label>Boxes<input name="boxes" type="number" step="1" /></label>
+                <label>Weight kg<input name="weight" type="number" step="0.01" /></label>
               </div>
             </div>
 
@@ -131,6 +136,7 @@
               <label>產地背景<textarea name="storyOrigin" rows="4"></textarea></label>
               <label>生產者 / 莊園故事<textarea name="storyProducer" rows="4"></textarea></label>
               <label>處理法說明<textarea name="processNote" rows="4"></textarea></label>
+              <label>來源網址<input name="sourceUrl" placeholder="https://..." /></label>
               <label>官方資料來源<textarea name="sourceOfficial" rows="2" placeholder="URL / 包裝 / 烘豆商資料"></textarea></label>
               <label>杯測 / 品飲來源<textarea name="sourceCupping" rows="2"></textarea></label>
               <label>個人品飲筆記來源<textarea name="sourcePersonal" rows="2"></textarea></label>
@@ -142,6 +148,53 @@
               <button id="resetBtn" type="button" class="secondary">清空表單</button>
             </div>
           </form>
+        </section>
+
+        <section class="card quick-import-card">
+          <div class="quick-import-head">
+            <div>
+              <p class="eyebrow">Quick Import</p>
+              <h2>快速導入資料</h2>
+              <p class="muted">貼上網址、頁面文字或 CSV，先產生欄位預覽，再套用到表單或直接寫入 Firestore。建議先確認資料來源與地圖精準度，避免無中生有。</p>
+            </div>
+          </div>
+
+          <div class="quick-import-grid">
+            <div class="quick-box">
+              <h3>1. 貼網址解析</h3>
+              <p class="muted">適合 Best of Panama / 烘豆商商品頁。若網站是動態頁，系統會盡量讀取公開 HTML，並保留來源網址。</p>
+              <label>URL<input id="quickUrl" type="url" placeholder="https://app.bestofpanama.auction/auction/canvas-of-terroir?product=3981" /></label>
+              <button id="parseUrlBtn" type="button">解析網址</button>
+            </div>
+
+            <div class="quick-box">
+              <h3>2. 貼頁面文字解析</h3>
+              <p class="muted">你可以從商品頁複製公開文字貼上來，系統會抓取名稱、產區、品種、處理法、分數、風味等欄位。</p>
+              <label>頁面文字<textarea id="quickText" rows="7" placeholder="貼上咖啡豆頁面的公開文字..."></textarea></label>
+              <button id="parseTextBtn" type="button">解析文字</button>
+            </div>
+
+            <div class="quick-box">
+              <h3>3. 貼 CSV 批量解析</h3>
+              <p class="muted">第一列放欄位名稱，例如 name,country,region,process,cuppingScore,published。</p>
+              <label>CSV 文字<textarea id="quickCsv" rows="7" placeholder="name,slug,country,region,process,published
+Panama Geisha Demo,panama-geisha-demo,Panama,Boquete,Washed,true"></textarea></label>
+              <button id="parseCsvTextBtn" type="button">解析 CSV</button>
+            </div>
+          </div>
+
+          <div class="quick-preview-wrap">
+            <div class="quick-preview-top">
+              <h3>預覽</h3>
+              <div class="quick-preview-actions">
+                <button id="applyPreviewBtn" type="button" class="secondary" disabled>套用第一筆到表單</button>
+                <button id="savePreviewBtn" type="button" disabled>儲存第一筆</button>
+                <button id="saveAllPreviewBtn" type="button" class="secondary" disabled>全部儲存</button>
+              </div>
+            </div>
+            <pre id="quickImportLog" class="import-log">尚未解析資料。</pre>
+            <div id="quickPreview" class="quick-preview"></div>
+          </div>
         </section>
 
         <section class="card import-card">

@@ -142,7 +142,7 @@ function renderBean(bean) {
   els.storyProducer.textContent = value(bean.storyProducer, '尚未填寫。');
   els.processNote.textContent = value(bean.processNote, '尚未填寫。');
 
-  const sources = [bean.sourceOfficial, bean.sourceCupping, bean.sourcePersonal].filter(Boolean);
+  const sources = [bean.sourceUrl, bean.sourceOfficial, bean.sourceCupping, bean.sourcePersonal].filter(Boolean);
   els.sourceText.textContent = sources.length ? sources.join('｜') : '尚未填寫。';
 
   const share = beanUrl(bean);
