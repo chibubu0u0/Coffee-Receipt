@@ -1,12 +1,14 @@
-export const firebaseConfig = {
-  apiKey: "AIzaSyA7wjWwKrXUm_NOUn7u4FH564QqV00jA6g",
-  authDomain: "coffee-origin-card.firebaseapp.com",
-  projectId: "coffee-origin-card",
-  storageBucket: "coffee-origin-card.firebasestorage.app",
-  messagingSenderId: "492858480747",
-  appId: "1:492858480747:web:59e8ca3ece64d82ab2392e",
-  measurementId: "G-Q1C2Y7RSMZ"
-};
+export const collectionName = 'coffee_beans';
 
-export const adminEmail = "chibubux3@gmail.com";
-export const collectionName = "coffee_beans";
+export async function getFirebaseConfig() {
+  const response = await fetch('/api/firebase-config', { cache: 'no-store' });
+
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    const missing = Array.isArray(detail.missing) ? ` Missing: ${detail.missing.join(', ')}` : '';
+    throw new Error(`Firebase config could not be loaded.${missing}`);
+  }
+
+  const data = await response.json();
+  return data.firebaseConfig;
+}

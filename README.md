@@ -25,7 +25,7 @@
 
 新增管理者帳號：
 
-`chibubux3@gmail.com`
+`your-admin-email@example.com`
 
 ### Firestore Rules
 
@@ -43,7 +43,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "chibubux3@gmail.com";
+        && request.auth.token.email == "your-admin-email@example.com";
     }
 
     match /coffee_beans/{beanId} {
@@ -100,3 +100,19 @@ jasmine|bergamot|honey
 - 官方資料、品飲筆記、AI 推導內容要分開標示
 - 沒有精確莊園座標時，不要假裝成莊園級定位
 - 地圖精準度可填：`country`、`region`、`subregion`、`farm`
+
+## Vercel Environment Variables
+
+請到 Vercel → Project Settings → Environment Variables 新增：
+
+```txt
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_MEASUREMENT_ID=
+```
+
+`FIREBASE_MEASUREMENT_ID` 可留空。

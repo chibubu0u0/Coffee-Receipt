@@ -1,4 +1,4 @@
-import { firebaseConfig, adminEmail, collectionName } from '../firebase-config.js';
+import { getFirebaseConfig, collectionName } from '../firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
   getAuth,
@@ -17,9 +17,15 @@ import {
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+let auth;
+let db;
+
+async function initFirebase() {
+  const firebaseConfig = await getFirebaseConfig();
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+}
 
 const els = {
   loginPanel: document.getElementById('loginPanel'),
@@ -45,8 +51,6 @@ const els = {
 
 let beans = [];
 let activeId = '';
-
-els.email.value = adminEmail;
 
 const fields = [
   'name','slug','country','region','subregion','farm','producer','variety','process','altitude','roastLevel','cuppingScore','published',
@@ -326,44 +330,58 @@ function downloadCSVTemplate() {
   URL.revokeObjectURL(url);
 }
 
-els.loginForm.addEventListener('submit', async event => {
-  event.preventDefault();
-  els.loginMessage.textContent = '登入中…';
-  try {
-    await signInWithEmailAndPassword(auth, els.email.value, els.password.value);
-    els.loginMessage.textContent = '';
-  } catch (error) {
-    console.error(error);
-    els.loginMessage.textContent = error.message;
-  }
-});
-
-els.logoutBtn.addEventListener('click', () => signOut(auth));
-els.beanForm.addEventListener('submit', saveBean);
-els.deleteBtn.addEventListener('click', deleteActiveBean);
-els.resetBtn.addEventListener('click', () => fillForm({}));
-els.newBeanBtn.addEventListener('click', () => fillForm({}));
-els.importCsvBtn.addEventListener('click', importCSV);
-els.downloadTemplateBtn.addEventListener('click', downloadCSVTemplate);
-els.beanForm.elements.name.addEventListener('input', event => {
-  const slugInput = els.beanForm.elements.slug;
-  if (!activeId && !slugInput.value) slugInput.value = slugify(event.target.value);
-});
-
-onAuthStateChanged(auth, async user => {
-  if (user) {
-    els.loginPanel.hidden = true;
-    els.adminPanel.hidden = false;
-    els.userLabel.textContent = `登入中：${user.email}`;
+function attachEventListeners() {
+  els.loginForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    els.loginMessage.textContent = '登入中…';
     try {
-      await loadBeans();
-      fillForm({});
+      await signInWithEmailAndPassword(auth, els.email.value, els.password.value);
+      els.loginMessage.textContent = '';
     } catch (error) {
       console.error(error);
-      status(`讀取失敗：${error.message}`, true);
+      els.loginMessage.textContent = error.message;
     }
-  } else {
-    els.loginPanel.hidden = false;
-    els.adminPanel.hidden = true;
+  });
+
+  els.logoutBtn.addEventListener('click', () => signOut(auth));
+  els.beanForm.addEventListener('submit', saveBean);
+  els.deleteBtn.addEventListener('click', deleteActiveBean);
+  els.resetBtn.addEventListener('click', () => fillForm({}));
+  els.newBeanBtn.addEventListener('click', () => fillForm({}));
+  els.importCsvBtn.addEventListener('click', importCSV);
+  els.downloadTemplateBtn.addEventListener('click', downloadCSVTemplate);
+  els.beanForm.elements.name.addEventListener('input', event => {
+    const slugInput = els.beanForm.elements.slug;
+    if (!activeId && !slugInput.value) slugInput.value = slugify(event.target.value);
+  });
+}
+
+async function boot() {
+  try {
+    await initFirebase();
+    attachEventListeners();
+
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        els.loginPanel.hidden = true;
+        els.adminPanel.hidden = false;
+        els.userLabel.textContent = `登入中：${user.email}`;
+        try {
+          await loadBeans();
+          fillForm({});
+        } catch (error) {
+          console.error(error);
+          status(`讀取失敗：${error.message}`, true);
+        }
+      } else {
+        els.loginPanel.hidden = false;
+        els.adminPanel.hidden = true;
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    els.loginMessage.textContent = `Firebase 設定讀取失敗：${error.message}`;
   }
-});
+}
+
+boot();

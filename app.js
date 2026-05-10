@@ -1,9 +1,14 @@
-import { firebaseConfig, collectionName } from './firebase-config.js';
+import { getFirebaseConfig, collectionName } from './firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+let db;
+
+async function initFirebase() {
+  const firebaseConfig = await getFirebaseConfig();
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+}
 
 const els = {
   select: document.getElementById('beanSelect'),
@@ -180,4 +185,9 @@ async function loadBeans() {
   }
 }
 
-loadBeans();
+initFirebase().then(loadBeans).catch(error => {
+  console.error(error);
+  els.status.textContent = 'Firebase 設定讀取失敗，請確認 Vercel Environment Variables。';
+  els.empty.hidden = false;
+  els.empty.querySelector('p').textContent = error.message;
+});
