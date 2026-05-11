@@ -576,7 +576,7 @@ footer { padding: 40px 0 56px; color: var(--muted); }
 }
 
 
-/* v12: tasting-note color fusion visual, no icons */
+/* v13: concentrated tasting-note color fusion visual, all source colors included */
 .button.disabled {
   pointer-events: none;
   opacity: 0.48;
@@ -589,29 +589,32 @@ footer { padding: 40px 0 56px; color: var(--muted); }
 }
 .flavor-color-field {
   position: relative;
-  height: 210px;
+  height: 190px;
   border: 1px solid var(--line);
   border-radius: 28px;
   overflow: hidden;
   background-color: #fffaf2;
-  box-shadow: inset 0 0 42px rgba(55, 36, 22, 0.08);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 92% 92%;
+  box-shadow: inset 0 0 52px rgba(55, 36, 22, 0.10);
 }
 .flavor-color-field::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.58), rgba(255,255,255,0) 42%),
-    conic-gradient(from 48deg at 50% 50%, rgba(255,255,255,0.22), rgba(255,255,255,0), rgba(255,255,255,0.26), rgba(255,255,255,0));
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.42), rgba(255,255,255,0) 34%),
+    conic-gradient(from 48deg at 50% 50%, rgba(255,255,255,0.18), rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0));
   mix-blend-mode: soft-light;
   opacity: 0.9;
 }
 .flavor-color-field::after {
   content: "";
   position: absolute;
-  inset: 12px;
-  border-radius: 24px;
-  border: 1px dashed rgba(87, 64, 46, 0.16);
+  inset: 22px 34px;
+  border-radius: 999px;
+  border: 1px dashed rgba(87, 64, 46, 0.15);
   filter: blur(0.2px);
   pointer-events: none;
 }
@@ -663,5 +666,5 @@ footer { padding: 40px 0 56px; color: var(--muted); }
 }
 @media (max-width: 720px) {
   .toolbar .button { width: 100%; text-align: center; }
-  .flavor-color-field { height: 180px; }
+  .flavor-color-field { height: 170px; background-size: 96% 92%; }
 }

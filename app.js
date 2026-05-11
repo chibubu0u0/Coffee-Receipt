@@ -168,18 +168,33 @@ function hexToRgba(hex, alpha) {
 }
 
 function buildFusionBackground(colors) {
-  const safeColors = colors.length ? colors : DEFAULT_FLAVOR_COLOR.colors;
-  const points = [
-    ['50%', '50%', 34], ['42%', '48%', 28], ['58%', '45%', 26], ['48%', '60%', 25],
-    ['64%', '58%', 24], ['36%', '57%', 22], ['52%', '36%', 21], ['70%', '42%', 20],
-    ['30%', '42%', 20], ['62%', '70%', 19], ['38%', '70%', 18], ['50%', '28%', 16]
+  const safeColors = (colors.length ? colors : DEFAULT_FLAVOR_COLOR.colors).filter(Boolean);
+  const count = safeColors.length;
+
+  const conicStops = safeColors.map((color, index) => {
+    const start = (index / count * 100).toFixed(2);
+    const end = ((index + 1) / count * 100).toFixed(2);
+    return `${hexToRgba(color, 0.68)} ${start}% ${end}%`;
+  }).join(', ');
+
+  const gradients = [
+    // Soft edge mask: keeps the fusion compact and centered instead of filling the whole receipt.
+    'radial-gradient(ellipse at center, rgba(255,253,248,0) 0%, rgba(255,253,248,0) 48%, rgba(255,250,241,0.74) 74%, #fffaf2 100%)',
+    // A conic core ensures every source color appears at least once in the center.
+    `conic-gradient(from -38deg at 50% 50%, ${conicStops})`,
+    'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.36) 18%, rgba(255,255,255,0) 42%)'
   ];
-  const gradients = points.map((point, index) => {
-    const color = safeColors[index % safeColors.length];
-    const [x, y, radius] = point;
-    return `radial-gradient(circle at ${x} ${y}, ${hexToRgba(color, 0.72)} 0%, ${hexToRgba(color, 0.46)} ${radius}%, rgba(255,253,248,0) ${radius + 17}%)`;
+
+  safeColors.forEach((color, index) => {
+    const angle = (index * 137.508) * Math.PI / 180;
+    const ring = index % 3;
+    const distance = 7 + ring * 5;
+    const x = 50 + Math.cos(angle) * distance;
+    const y = 50 + Math.sin(angle) * distance * 0.72;
+    const radius = 16 + (index % 5) * 2;
+    gradients.push(`radial-gradient(circle at ${x.toFixed(1)}% ${y.toFixed(1)}%, ${hexToRgba(color, 0.76)} 0%, ${hexToRgba(color, 0.52)} ${radius}%, rgba(255,253,248,0) ${radius + 16}%)`);
   });
-  gradients.push('radial-gradient(circle at center, rgba(255,253,248,0.15) 0%, rgba(255,253,248,0.78) 82%)');
+
   return gradients.join(', ');
 }
 
@@ -190,7 +205,7 @@ function renderFlavorColorField(notes) {
   const colorInfos = list.map(note => ({ note, ...flavorColorInfo(note) }));
   const paletteColors = [];
   colorInfos.forEach(info => info.colors.forEach(color => paletteColors.push(color)));
-  const background = buildFusionBackground(paletteColors.slice(0, 18));
+  const background = buildFusionBackground(paletteColors);
 
   return `
     <div class="flavor-color-visual" aria-label="依來源 tasting notes 產生的色彩視覺">
