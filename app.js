@@ -21,7 +21,8 @@ const els = {
   scorePill: document.getElementById('scorePill'),
   score: document.getElementById('cuppingScore'),
   heroFacts: document.getElementById('heroFacts'),
-  sections: document.getElementById('receiptSections')
+  sections: document.getElementById('receiptSections'),
+  download: document.getElementById('downloadImage')
 };
 
 function hasValue(v) {
@@ -47,6 +48,27 @@ function cssSafe(text) {
 function numericValue(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function flavorIcon(note) {
+  const s = String(note || '').toLowerCase();
+  if (/jasmine|rose|floral|flower|white flower|花|茉莉|玫瑰/.test(s)) return '✿';
+  if (/tangerine|mandarin|citrus|orange|lemon|bergamot|grapefruit|柑|橘|檸檬|佛手柑/.test(s)) return '◌';
+  if (/peach|guava|pineapple|raspberry|berry|apple|grape|fruit|桃|芭樂|鳳梨|莓|水果/.test(s)) return '●';
+  if (/honey|caramel|sugar|syrup|molasses|甜|蜂蜜|焦糖|糖/.test(s)) return '◆';
+  if (/tea|herb|lemongrass|mint|茶|草本|香茅|薄荷/.test(s)) return '≋';
+  if (/chocolate|cocoa|cacao|nut|almond|hazelnut|巧克力|可可|堅果|杏仁/.test(s)) return '■';
+  if (/spice|cinnamon|clove|pepper|香料|肉桂|胡椒/.test(s)) return '✦';
+  if (/wine|rum|ferment|酒|發酵/.test(s)) return '◒';
+  return '·';
+}
+
+function renderFlavorIcons(notes) {
+  const list = notes.slice(0, 28);
+  if (!list.length) return '';
+  return `<div class="flavor-icon-list">${list.map(note => `
+    <span class="flavor-icon-chip"><i aria-hidden="true">${cssSafe(flavorIcon(note))}</i><b>${cssSafe(note)}</b></span>`).join('')}
+  </div>`;
 }
 
 function beanUrl(bean) {
@@ -120,29 +142,29 @@ function renderAuctionSection(bean) {
 
 function renderOfficialFlavorSection(bean) {
   const notes = toArray(bean.flavorNotes);
+  const displayNotes = notes.length ? notes : toArray(bean.officialFlavor);
   const parts = [];
   if (hasValue(bean.officialFlavor)) {
     parts.push(`<p class="actual-text">${cssSafe(bean.officialFlavor)}</p>`);
   }
-  if (notes.length) {
-    parts.push(`<ul class="actual-list">${notes.map(note => `<li>${cssSafe(note)}</li>`).join('')}</ul>`);
+  if (displayNotes.length) {
+    parts.push(renderFlavorIcons(displayNotes));
   }
   return section('官方風味描述 / Tasting Notes', parts.join(''));
 }
 
 function renderCuppingSection(bean) {
   const rows = [
-    row('杯測總分', bean.cuppingScore, '來源總分'),
-    row('Aroma 香氣', bean.aromaScore, '後台明確填寫'),
-    row('Acidity 酸質', bean.acidityScore, '後台明確填寫'),
-    row('Sweetness 甜感', bean.sweetnessScore, '後台明確填寫'),
-    row('Bitterness 苦感', bean.bitternessScore, '後台明確填寫'),
-    row('Body 醇厚度', bean.bodyScore, '後台明確填寫'),
-    row('Aftertaste 餘韻', bean.aftertasteScore, '後台明確填寫'),
-    row('Fermentation 發酵感', bean.fermentationScore, '後台明確填寫'),
-    row('Clean Cup 乾淨度', bean.cleanScore, '後台明確填寫')
+    row('Aroma 香氣', bean.aromaScore),
+    row('Acidity 酸質', bean.acidityScore),
+    row('Sweetness 甜感', bean.sweetnessScore),
+    row('Bitterness 苦感', bean.bitternessScore),
+    row('Body 醇厚度', bean.bodyScore),
+    row('Aftertaste 餘韻', bean.aftertasteScore),
+    row('Fermentation 發酵感', bean.fermentationScore),
+    row('Clean Cup 乾淨度', bean.cleanScore)
   ];
-  return section('杯測 / 感官數據', table(rows, true));
+  return section('杯測 / 感官數據', table(rows));
 }
 
 function renderProcessSection(bean) {
@@ -215,6 +237,10 @@ function renderBean(bean) {
   }
 
   renderHeroFacts(bean);
+  if (els.download) {
+    els.download.classList.remove('disabled');
+    els.download.removeAttribute('aria-disabled');
+  }
   section.count = 1;
   const sections = [
     renderOriginSection(bean),
@@ -227,6 +253,60 @@ function renderBean(bean) {
     renderSourceSection(bean)
   ].filter(Boolean).join('');
   els.sections.innerHTML = sections;
+}
+
+function loadHtml2Canvas() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = () => resolve(window.html2canvas);
+    script.onerror = () => reject(new Error('圖片下載工具載入失敗，請稍後再試。'));
+    document.head.appendChild(script);
+  });
+}
+
+async function downloadReceiptImage(event) {
+  event.preventDefault();
+  const bean = beans[Number(els.select.value)] || beans[0];
+  if (!bean || els.card.hidden) return;
+
+  const originalText = els.download.textContent;
+  els.download.textContent = '產生圖片中…';
+  els.download.classList.add('disabled');
+  els.download.setAttribute('aria-disabled', 'true');
+  els.card.classList.add('is-capturing');
+
+  try {
+    const html2canvas = await loadHtml2Canvas();
+    let canvas;
+    try {
+      canvas = await html2canvas(els.card, {
+        backgroundColor: '#fffdfa',
+        scale: Math.min(2.5, Math.max(2, window.devicePixelRatio || 2)),
+        useCORS: true,
+        ignoreElements: el => el.tagName === 'IFRAME'
+      });
+    } catch (firstError) {
+      canvas = await html2canvas(els.card, {
+        backgroundColor: '#fffdfa',
+        scale: 2,
+        ignoreElements: el => el.tagName === 'IFRAME' || el.tagName === 'IMG'
+      });
+    }
+    const link = document.createElement('a');
+    link.download = `${(bean.slug || bean.id || 'coffee-receipt').replace(/[^a-z0-9-_一-龥]/gi, '-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (error) {
+    console.error(error);
+    alert(error.message || '圖片下載失敗。');
+  } finally {
+    els.card.classList.remove('is-capturing');
+    els.download.textContent = originalText;
+    els.download.classList.remove('disabled');
+    els.download.removeAttribute('aria-disabled');
+  }
 }
 
 function populateSelect() {
@@ -262,6 +342,10 @@ async function loadBeans() {
     els.empty.hidden = false;
     els.empty.querySelector('p').textContent = error.message;
   }
+}
+
+if (els.download) {
+  els.download.addEventListener('click', downloadReceiptImage);
 }
 
 initFirebase().then(loadBeans).catch(error => {

@@ -1,4 +1,4 @@
-# Coffee Receipt Studio — Firebase v10 Pure Data Receipt
+# Coffee Receipt Studio — Firebase v11 Pure Data Receipt
 
 這版是「純資料收據模式」：
 
@@ -87,7 +87,7 @@ service cloud.firestore {
 7. 儲存到 Firestore
 8. 前台重新整理後顯示資料
 
-## v10 重要差異
+## v11 重要差異
 
 - 前台 receipt 版面改成「依資料欄位動態顯示」。
 - 移除色彩語言、情緒標籤、人格描述、百分比長條圖。
@@ -95,3 +95,10 @@ service cloud.firestore {
 - 「杯測 / 感官數據」只顯示明確填入的數值，不轉換成百分比。
 - AI schema 不包含酸質、甜感、香氣、醇厚度等主觀評分欄位。
 - URL fallback 不再塞入估算地圖座標。
+
+
+## v11 更新
+
+- 前台收據移除「來源總分」提示；杯測總分只保留在收據右上角與實際拍賣欄位，不再放進感官數據表。
+- 新增「下載圖片」按鈕，可將目前資料收據輸出成 PNG。
+- 官方風味描述以實際 tasting notes 產生簡約圖示 chip；只做視覺呈現，不產生百分比或主觀分數。

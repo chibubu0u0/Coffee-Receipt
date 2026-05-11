@@ -574,3 +574,63 @@ footer { padding: 40px 0 56px; color: var(--muted); }
   .facts-table td { padding-top: 2px; }
   .facts-table.with-note td:nth-child(3) { width: 100%; }
 }
+
+
+/* v11: pure data receipt enhancements */
+.button.disabled {
+  pointer-events: none;
+  opacity: 0.48;
+}
+.toolbar .button {
+  white-space: nowrap;
+}
+.flavor-icon-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.flavor-icon-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: #fffaf2;
+  color: var(--ink);
+  font-weight: 850;
+  min-width: 0;
+}
+.flavor-icon-chip i {
+  width: 25px;
+  height: 25px;
+  border: 1px solid #d3c6b8;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 0.86rem;
+  color: #5b351f;
+  background: rgba(255, 253, 248, 0.8);
+  flex: 0 0 auto;
+}
+.flavor-icon-chip b {
+  font-size: 0.84rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.is-capturing .receipt-map iframe {
+  visibility: hidden;
+}
+.is-capturing .receipt-map::after {
+  content: 'Map hidden in image export';
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  font-weight: 800;
+}
+@media (max-width: 720px) {
+  .toolbar .button { width: 100%; text-align: center; }
+}
