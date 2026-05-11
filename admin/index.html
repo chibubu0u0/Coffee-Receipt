@@ -34,14 +34,14 @@
             <div>
               <p class="eyebrow">Quick Import</p>
               <h2>快速導入資料</h2>
-              <p class="muted">貼上網址、頁面文字或 CSV，先產生欄位預覽，再套用到表單或直接寫入 Firestore。建議先確認資料來源與地圖精準度，避免無中生有。</p>
+              <p class="muted">貼上網址、頁面文字或 CSV，先產生欄位預覽，再套用到表單或直接寫入 Firestore。v9 採「來源資料模式」：AI 只抽取來源明確寫出的資訊，不自動評分、不做人格/情緒/色彩判斷。</p>
             </div>
           </div>
 
           <div class="quick-import-grid">
             <div class="quick-box ai-quick-box primary-import-box">
-              <h3>1. AI 解析</h3>
-              <p class="muted">建議先貼「頁面文字」再按 AI 解析文字，動態網站會比較穩。會使用 Vercel 裡的 OPENAI_API_KEY；AI 只產生草稿，預設不公開。</p>
+              <h3>1. AI 資料抽取</h3>
+              <p class="muted">建議先貼「頁面文字」再按 AI 解析文字。AI 只會整理來源明確出現的欄位；若來源沒有寫酸質、甜感等 0–5 數字，會留空，不會自動判斷。</p>
               <div class="ai-actions">
                 <button id="aiParseTextBtn" type="button">AI 解析文字</button>
                 <button id="aiParseUrlBtn" type="button" class="secondary">AI 解析網址</button>
@@ -144,6 +144,7 @@ Panama Geisha Demo,panama-geisha-demo,Panama,Boquete,Washed,true"></textarea></l
 
             <div class="form-section">
               <h3>風味資料</h3>
+              <p class="muted">請只填官方資料、杯測表或你自己明確記錄的數據。AI 匯入不會自動產生 0–5 感官分數。</p>
               <label>官方風味描述<textarea name="officialFlavor" rows="3"></textarea></label>
               <label>主要風味標籤<textarea name="flavorNotes" rows="2" placeholder="jasmine, bergamot, honey"></textarea></label>
               <label>系統標籤<textarea name="tags" rows="2" placeholder="花香 | 高酸 | 清爽"></textarea></label>
