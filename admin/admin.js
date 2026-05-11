@@ -405,7 +405,7 @@ function downloadCSVTemplate() {
   const sample = [
     'GW-01 Hacienda La Esmeralda Geisha Washed','gw-01-hacienda-la-esmeralda-geisha-washed','Panama','Cañas Verdes','Nido region, Cañas Verdes','Hacienda La Esmeralda','Hacienda La Esmeralda','Geisha','Washed','2050 masl','',
     'Super floral, tangerine, mandarin, white peach, guava, jasmine, lemongrass, bergamot, pineapple, raspberry, citrus, honey, long aftertaste',
-    'jasmine|bergamot|honey|white peach','98','Best of Panama 2025 Auction','Canvas of Terroir','Geisha Washed','GW-01','G652','30204','USD/kg','Julith Coffee','2','20','8.761466','-82.49159','region','true','https://app.bestofpanama.auction/auction/canvas-of-terroir?product=3981','Best of Panama 2025 Auction product page'
+    'jasmine|bergamot|honey|white peach','98','Best of Panama 2025 Auction','Canvas of Terroir','Geisha Washed','GW-01','G652','30204','USD/kg','Julith Coffee','2','20','','','region','true','https://app.bestofpanama.auction/auction/canvas-of-terroir?product=3981','Best of Panama 2025 Auction product page'
   ];
   const csv = `${headers.join(',')}\n${sample.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')}\n`;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -426,12 +426,14 @@ function findFirst(text, patterns) {
 }
 
 function collectFlavorNotes(text) {
-  const candidates = [
-    'jasmine','bergamot','tangerine','mandarin','white peach','peach','guava','sherbet','lemongrass','pineapple','raspberry','citrus','honey',
-    'orange','lemon','lime','floral','super floral','tea','black tea','green tea','chocolate','cacao','caramel','brown sugar','vanilla','winey','stone fruit','berries','strawberry','blueberry'
-  ];
-  const lower = text.toLowerCase();
-  return candidates.filter(item => lower.includes(item.toLowerCase())).slice(0, 14);
+  const source = String(text || '').replace(/\u00a0/g, ' ');
+  const match = source.match(/(?:flavou?r notes?|tasting notes?|official flavou?r|cup notes?)\s*[:：]\s*([^\n\r.。]{3,500})/i);
+  if (!match) return [];
+  return match[1]
+    .split(/[,;，、|]/)
+    .map(item => item.trim())
+    .filter(Boolean)
+    .slice(0, 24);
 }
 
 function parseTextToBean(rawText, sourceUrl = '') {
@@ -509,16 +511,6 @@ function parseTextToBean(rawText, sourceUrl = '') {
 
   if (/cool temperature/i.test(text) || /cold-temperature|cold temperature/i.test(text)) {
     bean.processNote = 'Cool Temperature Washed Fermentation with Climate Controlled Drying';
-  }
-  if (/peterson family/i.test(text) || /2004/i.test(text)) {
-    bean.storyProducer = 'The page mentions the Peterson family and Hacienda La Esmeralda’s role in bringing the Geisha varietal to global specialty coffee attention.';
-  }
-
-  if (bean.region === 'Cañas Verdes') {
-    bean.latitude = 8.761466;
-    bean.longitude = -82.49159;
-    bean.mapAccuracy = 'region';
-    bean.sourcePersonal = 'Map coordinates are region-level approximation for Cañas Verdes / Boquete, not exact farm coordinates.';
   }
 
   return normalizeBean(bean);
@@ -623,20 +615,20 @@ async function aiParseImport(mode = 'text') {
     return;
   }
   try {
-    quickStatus(`AI 解析${mode === 'url' ? '網址' : '文字'}中…這會消耗你的 OpenAI API 額度。`);
+    quickStatus(`AI 抽取${mode === 'url' ? '網址' : '文字'}中…這會消耗你的 OpenAI API 額度。`);
     const response = await fetch('/api/ai-parse-bean', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode, url, text })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || data.detail?.message || 'AI 解析失敗。');
+    if (!response.ok) throw new Error(data.error || data.detail?.message || 'AI 抽取失敗。');
     const parsed = (data.beans || []).map(bean => normalizeBean(bean)).filter(bean => bean.name);
-    if (!parsed.length) throw new Error('AI 沒有解析到可用的咖啡豆資料。');
-    setQuickPreview(parsed, `${data.message || 'AI 解析完成。'}\n${data.note || '請確認欄位後再儲存。'}\nModel: ${data.model || 'default'}`);
+    if (!parsed.length) throw new Error('AI 沒有抽取到可用的咖啡豆資料。');
+    setQuickPreview(parsed, `${data.message || 'AI 抽取完成。'}\n${data.note || '請確認欄位後再儲存。'}\nModel: ${data.model || 'default'}`);
   } catch (error) {
     console.error(error);
-    quickStatus(`AI 解析失敗：${error.message}\n請確認 Vercel 已設定 OPENAI_API_KEY，或改用規則解析 / CSV 匯入。`);
+    quickStatus(`AI 抽取失敗：${error.message}\n請確認 Vercel 已設定 OPENAI_API_KEY，或改用規則抽取 / CSV 匯入。`);
   }
 }
 

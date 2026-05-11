@@ -20,235 +20,33 @@ const els = {
   producer: document.getElementById('beanProducer'),
   scorePill: document.getElementById('scorePill'),
   score: document.getElementById('cuppingScore'),
-  originReading: document.getElementById('originReading'),
-  tagline: document.getElementById('receiptTagline'),
-  flavorTags: document.getElementById('flavorTags'),
-  colorPalette: document.getElementById('colorPalette'),
-  mapWrap: document.getElementById('mapWrap'),
-  mapCaption: document.getElementById('mapCaption'),
-  originCurve: document.getElementById('originCurve'),
-  microMeta: document.getElementById('microMeta'),
-  coffeeSymbols: document.getElementById('coffeeSymbols'),
-  flavorLedger: document.getElementById('flavorLedger'),
-  overallVibe: document.getElementById('overallVibe'),
-  overallNote: document.getElementById('overallNote'),
-  sourceText: document.getElementById('sourceText'),
-  qrImage: document.getElementById('qrImage'),
-  shareLink: document.getElementById('shareLink')
+  heroFacts: document.getElementById('heroFacts'),
+  sections: document.getElementById('receiptSections')
 };
 
+function hasValue(v) {
+  return !(v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0));
+}
+
 function value(v, fallback = '—') {
-  if (v === undefined || v === null || v === '') return fallback;
-  return v;
+  return hasValue(v) ? v : fallback;
 }
 
 function toArray(v) {
-  if (Array.isArray(v)) return v.filter(Boolean);
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
   if (typeof v === 'string') return v.split(/[|,;，、\n]/).map(s => s.trim()).filter(Boolean);
   return [];
 }
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function score5(raw, fallback = 3.5) {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return clamp(n, 0, 5);
-}
-
-function percent(raw, fallback = 70) {
-  const s = score5(raw, null);
-  if (s === null) return fallback;
-  return Math.round((s / 5) * 100);
-}
-
 function cssSafe(text) {
-  return String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  return String(text ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
 }
 
-function makeOriginReading(bean) {
-  if (bean.storyOrigin) return bean.storyOrigin;
-  const parts = [bean.region, bean.subRegion, bean.country].filter(Boolean).join('，');
-  const process = value(bean.process, '未標示處理法');
-  const variety = value(bean.variety, '未標示品種');
-  const flavor = value(bean.officialFlavor, '尚未填寫官方風味');
-  return `這支咖啡來自 ${parts || '尚未標示產地'}。以 ${variety} 與 ${process} 為主要線索，官方風味描述包含 ${flavor}。本段為依據資料欄位整理的產地摘要，建議搭配原始來源一起閱讀。`;
-}
-
-function makeTagline(bean) {
-  if (bean.category) return `${bean.category} 的產地切片`;
-  if (bean.process && bean.region) return `${bean.region} 的 ${bean.process} 風味輪廓`;
-  if (bean.region) return `${bean.region} 的風味輪廓`;
-  return '一張可以被查證的咖啡豆收據';
-}
-
-function renderFlavorTags(bean) {
-  const items = [
-    { icon: '☼', label: '香氣明亮', sub: '香氣', score: bean.aromaScore, fallback: 82 },
-    { icon: '≋', label: '酸質輪廓', sub: '酸質', score: bean.acidityScore, fallback: 78 },
-    { icon: '♡', label: '甜感厚度', sub: '甜感', score: bean.sweetnessScore, fallback: 84 },
-    { icon: '△', label: '口感結構', sub: '醇厚', score: bean.bodyScore, fallback: 72 },
-    { icon: '◇', label: '乾淨透明', sub: '乾淨度', score: bean.cleanScore, fallback: 80 },
-    { icon: '—', label: '餘韻長度', sub: '餘韻', score: bean.aftertasteScore, fallback: 76 }
-  ];
-
-  els.flavorTags.innerHTML = items.map(item => {
-    const p = percent(item.score, item.fallback);
-    return `
-      <div class="flavor-tag-row">
-        <div class="tag-icon">${item.icon}</div>
-        <div class="tag-copy">
-          <strong>${item.label}</strong>
-          <span>${item.sub}</span>
-        </div>
-        <div class="receipt-bar"><i style="width:${p}%"></i></div>
-        <b>${p}%</b>
-      </div>`;
-  }).join('');
-}
-
-function paletteFor(bean) {
-  const process = String(bean.process || '').toLowerCase();
-  const flavor = String(bean.officialFlavor || '').toLowerCase();
-  if (process.includes('natural') || process.includes('日曬')) {
-    return [
-      ['莓果酒紅', '#8A4B46'],
-      ['熟果琥珀', '#C8844B'],
-      ['深焙陰影', '#4B3D37']
-    ];
-  }
-  if (process.includes('washed') || process.includes('水洗')) {
-    return [
-      ['花香霧綠', '#9BAF9F'],
-      ['柑橘米杏', '#D8C29B'],
-      ['茶感墨灰', '#4B4A44']
-    ];
-  }
-  if (process.includes('anaerobic') || process.includes('厭氧') || flavor.includes('ferment')) {
-    return [
-      ['發酵玫瑰', '#B56D6F'],
-      ['果皮琥珀', '#D1A15F'],
-      ['可可棕黑', '#49362F']
-    ];
-  }
-  return [
-    ['咖啡紙白', '#F3EEE4'],
-    ['烘焙杏褐', '#C7AA86'],
-    ['產地深棕', '#4D382A']
-  ];
-}
-
-function renderPalette(bean) {
-  els.colorPalette.innerHTML = paletteFor(bean).map(([name, hex]) => `
-    <div class="palette-row">
-      <i style="background:${hex}"></i>
-      <strong>${name}</strong>
-      <span>${hex}</span>
-    </div>`).join('');
-}
-
-function renderCurve(bean) {
-  const values = [
-    percent(bean.aromaScore, 75),
-    percent(bean.acidityScore, 68),
-    percent(bean.sweetnessScore, 82),
-    percent(bean.bodyScore, 64),
-    percent(bean.aftertasteScore, 78),
-    percent(bean.cleanScore, 74)
-  ];
-  const points = values.map((v, i) => {
-    const x = 8 + i * 18;
-    const y = 78 - (v * 0.5);
-    return `${x},${y}`;
-  }).join(' ');
-  els.originCurve.innerHTML = `
-    <svg viewBox="0 0 110 70" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="receiptCurve" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#93aaa0" />
-          <stop offset="0.5" stop-color="#d2bea1" />
-          <stop offset="1" stop-color="#4b4a44" />
-        </linearGradient>
-      </defs>
-      <polyline points="${points}" fill="none" stroke="url(#receiptCurve)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="8" y1="60" x2="100" y2="60" stroke="#d7cfc4" stroke-dasharray="2 3" />
-    </svg>`;
-}
-
-function renderMap(bean) {
-  const lat = Number(bean.latitude);
-  const lng = Number(bean.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    els.mapWrap.innerHTML = `<div class="map-placeholder">尚未提供經緯度<br><small>可先以文字標示產區</small></div>`;
-    els.mapCaption.textContent = `Map accuracy｜${value(bean.mapAccuracy, '未確認')}`;
-    return;
-  }
-  const delta = 0.16;
-  const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join('%2C');
-  const marker = `${lat}%2C${lng}`;
-  els.mapWrap.innerHTML = `<iframe title="Origin map" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}" loading="lazy"></iframe>`;
-  els.mapCaption.textContent = `${value(bean.region)} ${value(bean.country, '')}｜Map accuracy｜${value(bean.mapAccuracy, '未確認')}`;
-}
-
-function renderMicroMeta(bean) {
-  const items = [
-    ['產地', [bean.country, bean.region].filter(Boolean).join(' / ')],
-    ['莊園', bean.farm],
-    ['品種', bean.variety],
-    ['處理法', bean.process],
-    ['海拔', bean.altitude]
-  ].filter(([, v]) => v);
-  els.microMeta.innerHTML = items.map(([k, v]) => `<span>${cssSafe(k)}：${cssSafe(v)}</span>`).join('');
-}
-
-function renderSymbols(bean) {
-  const flavors = toArray(bean.flavorNotes).slice(0, 3);
-  const primaryFlavor = flavors[0] || String(bean.officialFlavor || '').split(/[，,]/)[0] || '風味線索';
-  const symbols = [
-    ['產地', bean.region ? `${bean.region} 的高地座標` : '尚未標示產地'],
-    ['處理法', bean.process ? `${bean.process} 帶出的乾淨度與層次` : '尚未標示處理法'],
-    ['風味', `${primaryFlavor} 作為第一個記憶點`]
-  ];
-  els.coffeeSymbols.innerHTML = symbols.map(([title, desc]) => `<li><strong>${cssSafe(title)}</strong><span>${cssSafe(desc)}</span></li>`).join('');
-}
-
-function renderLedger(bean) {
-  const rows = [
-    ['花果香氣', bean.aromaScore, 82],
-    ['明亮酸質', bean.acidityScore, 78],
-    ['甜感層次', bean.sweetnessScore, 84],
-    ['醇厚口感', bean.bodyScore, 72],
-    ['乾淨度', bean.cleanScore, 80],
-    ['餘韻', bean.aftertasteScore, 76]
-  ];
-  els.flavorLedger.innerHTML = rows.map(([label, raw, fallback]) => {
-    const p = percent(raw, fallback);
-    const qty = Math.max(1, Math.round(p / 30));
-    return `<tr><td>${label}</td><td>${qty}</td><td>${p}%</td></tr>`;
-  }).join('');
-}
-
-function renderOverall(bean) {
-  const process = String(bean.process || '').toLowerCase();
-  if (process.includes('washed') || process.includes('水洗')) {
-    els.overallVibe.textContent = '清澈花香型';
-    els.overallNote.textContent = '以乾淨酸質、花香與透明感作為主要輪廓。';
-    return;
-  }
-  if (process.includes('natural') || process.includes('日曬')) {
-    els.overallVibe.textContent = '熟果甜感型';
-    els.overallNote.textContent = '以果實甜感、發酵香氣與圓潤口感作為主要輪廓。';
-    return;
-  }
-  if (process.includes('anaerobic') || process.includes('厭氧')) {
-    els.overallVibe.textContent = '實驗發酵型';
-    els.overallNote.textContent = '以強烈香氣、發酵層次與辨識度作為主要輪廓。';
-    return;
-  }
-  els.overallVibe.textContent = bean.category || '產地風味型';
-  els.overallNote.textContent = '依據產地、處理法與官方風味欄位整理。';
+function numericValue(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function beanUrl(bean) {
@@ -258,6 +56,149 @@ function beanUrl(bean) {
   return url.toString();
 }
 
+function row(label, raw, note = '') {
+  if (!hasValue(raw)) return '';
+  return `<tr><th>${cssSafe(label)}</th><td>${cssSafe(raw)}</td>${note ? `<td>${cssSafe(note)}</td>` : ''}</tr>`;
+}
+
+function table(rows, withNote = false) {
+  const body = rows.filter(Boolean).join('');
+  if (!body) return '';
+  return `<table class="facts-table ${withNote ? 'with-note' : ''}"><tbody>${body}</tbody></table>`;
+}
+
+function section(title, content) {
+  if (!content || !String(content).trim()) return '';
+  const number = String(section.count++).padStart(2, '0');
+  return `
+    <section class="receipt-section fact-section">
+      <div class="section-line"><span>${cssSafe(title)}</span><span>${number}</span></div>
+      ${content}
+    </section>`;
+}
+
+function renderHeroFacts(bean) {
+  const items = [
+    bean.country,
+    bean.region,
+    bean.category,
+    bean.lotNumber,
+    hasValue(bean.cuppingScore) ? `${bean.cuppingScore} pts` : ''
+  ].filter(hasValue);
+  els.heroFacts.innerHTML = items.map(item => `<span>${cssSafe(item)}</span>`).join('');
+}
+
+function renderOriginSection(bean) {
+  return section('產地與基本資料', table([
+    row('國家', bean.country),
+    row('產區', bean.region),
+    row('子產區', bean.subregion),
+    row('莊園 / 合作社', bean.farm),
+    row('生產者', bean.producer),
+    row('品種', bean.variety),
+    row('處理法', bean.process),
+    row('海拔', bean.altitude),
+    row('烘焙度', bean.roastLevel)
+  ]));
+}
+
+function renderAuctionSection(bean) {
+  return section('競賽 / 拍賣資料', table([
+    row('競賽 / 拍賣名稱', bean.competitionName),
+    row('主題', bean.auctionTheme),
+    row('類別', bean.category),
+    row('Lot 編號', bean.lotNumber),
+    row('Code', bean.code),
+    row('排名', bean.rank),
+    row('杯測分數', bean.cuppingScore),
+    row('得標價格', [bean.bidPrice, bean.priceUnit].filter(Boolean).join(' ')),
+    row('得標者', bean.winningBidder),
+    row('Boxes', bean.boxes),
+    row('Weight', hasValue(bean.weight) ? `${bean.weight} kg` : '')
+  ]));
+}
+
+function renderOfficialFlavorSection(bean) {
+  const notes = toArray(bean.flavorNotes);
+  const parts = [];
+  if (hasValue(bean.officialFlavor)) {
+    parts.push(`<p class="actual-text">${cssSafe(bean.officialFlavor)}</p>`);
+  }
+  if (notes.length) {
+    parts.push(`<ul class="actual-list">${notes.map(note => `<li>${cssSafe(note)}</li>`).join('')}</ul>`);
+  }
+  return section('官方風味描述 / Tasting Notes', parts.join(''));
+}
+
+function renderCuppingSection(bean) {
+  const rows = [
+    row('杯測總分', bean.cuppingScore, '來源總分'),
+    row('Aroma 香氣', bean.aromaScore, '後台明確填寫'),
+    row('Acidity 酸質', bean.acidityScore, '後台明確填寫'),
+    row('Sweetness 甜感', bean.sweetnessScore, '後台明確填寫'),
+    row('Bitterness 苦感', bean.bitternessScore, '後台明確填寫'),
+    row('Body 醇厚度', bean.bodyScore, '後台明確填寫'),
+    row('Aftertaste 餘韻', bean.aftertasteScore, '後台明確填寫'),
+    row('Fermentation 發酵感', bean.fermentationScore, '後台明確填寫'),
+    row('Clean Cup 乾淨度', bean.cleanScore, '後台明確填寫')
+  ];
+  return section('杯測 / 感官數據', table(rows, true));
+}
+
+function renderProcessSection(bean) {
+  return section('處理與沖煮資訊', table([
+    row('處理法說明', bean.processNote),
+    row('推薦沖煮法', bean.brewMethod),
+    row('粉水比', bean.brewRatio),
+    row('水溫', bean.brewTemp),
+    row('研磨度', bean.grind),
+    row('萃取時間', bean.brewTime)
+  ]));
+}
+
+function renderStorySection(bean) {
+  const parts = [];
+  if (hasValue(bean.storyOrigin)) parts.push(`<div class="source-block"><strong>產地背景</strong><p>${cssSafe(bean.storyOrigin)}</p></div>`);
+  if (hasValue(bean.storyProducer)) parts.push(`<div class="source-block"><strong>生產者 / 莊園資料</strong><p>${cssSafe(bean.storyProducer)}</p></div>`);
+  return section('來源文字補充', parts.join(''));
+}
+
+function renderMapSection(bean) {
+  const lat = numericValue(bean.latitude);
+  const lng = numericValue(bean.longitude);
+  const parts = [];
+
+  if (lat !== null && lng !== null) {
+    const delta = 0.16;
+    const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join('%2C');
+    const marker = `${lat}%2C${lng}`;
+    parts.push(`<div class="receipt-map"><iframe title="Origin map" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}" loading="lazy"></iframe></div>`);
+    parts.push(`<p class="tiny-text">Latitude：${cssSafe(lat)}｜Longitude：${cssSafe(lng)}｜Map accuracy：${cssSafe(value(bean.mapAccuracy, '未填寫'))}</p>`);
+  } else if (hasValue(bean.mapAccuracy)) {
+    parts.push(`<p class="actual-text">Map accuracy：${cssSafe(bean.mapAccuracy)}。來源或後台尚未提供經緯度，因此不顯示地圖。</p>`);
+  }
+
+  return section('產地地圖', parts.join(''));
+}
+
+function renderSourceSection(bean) {
+  const sources = [
+    ['來源網址', bean.sourceUrl],
+    ['官方資料來源', bean.sourceOfficial],
+    ['杯測 / 品飲來源', bean.sourceCupping],
+    ['個人品飲筆記來源', bean.sourcePersonal]
+  ].filter(([, v]) => hasValue(v));
+  const share = beanUrl(bean);
+  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(share)}`;
+  const sourceTable = table(sources.map(([k, v]) => row(k, v)));
+  return section('資料來源 / QR Code', `
+    ${sourceTable || '<p class="actual-text">尚未填寫資料來源。</p>'}
+    <div class="qr-row factual-qr">
+      <img src="${qr}" alt="QR Code" />
+      <a href="${cssSafe(share)}">開啟此資料卡</a>
+    </div>`);
+}
+
 function renderBean(bean) {
   if (!bean) return;
   els.card.hidden = false;
@@ -265,31 +206,27 @@ function renderBean(bean) {
 
   els.name.textContent = value(bean.name, 'Untitled Coffee Bean');
   els.producer.textContent = [bean.farm, bean.producer].filter(Boolean).join('｜') || value(bean.producer, 'Producer not provided');
-  if (bean.cuppingScore !== undefined && bean.cuppingScore !== '') {
+
+  if (hasValue(bean.cuppingScore)) {
     els.scorePill.hidden = false;
     els.score.textContent = bean.cuppingScore;
   } else {
     els.scorePill.hidden = true;
   }
 
-  els.originReading.textContent = makeOriginReading(bean);
-  els.tagline.textContent = makeTagline(bean);
-  renderFlavorTags(bean);
-  renderPalette(bean);
-  renderMap(bean);
-  renderCurve(bean);
-  renderMicroMeta(bean);
-  renderSymbols(bean);
-  renderLedger(bean);
-  renderOverall(bean);
-
-  const sources = [bean.sourceUrl, bean.sourceOfficial, bean.sourceCupping, bean.sourcePersonal].filter(Boolean);
-  els.sourceText.textContent = sources.length ? sources.join('｜') : '尚未填寫。';
-
-  const share = beanUrl(bean);
-  els.qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(share)}`;
-  els.shareLink.href = share;
-  els.shareLink.textContent = '掃描 / 開啟此咖啡收據';
+  renderHeroFacts(bean);
+  section.count = 1;
+  const sections = [
+    renderOriginSection(bean),
+    renderAuctionSection(bean),
+    renderOfficialFlavorSection(bean),
+    renderCuppingSection(bean),
+    renderProcessSection(bean),
+    renderStorySection(bean),
+    renderMapSection(bean),
+    renderSourceSection(bean)
+  ].filter(Boolean).join('');
+  els.sections.innerHTML = sections;
 }
 
 function populateSelect() {

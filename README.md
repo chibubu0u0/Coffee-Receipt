@@ -1,26 +1,23 @@
-# Coffee Origin Card — Firebase + AI Quick Import
+# Coffee Receipt Studio — Firebase v10 Pure Data Receipt
 
-這是一個可以部署到 Vercel 的咖啡豆資料卡網站。
+這版是「純資料收據模式」：
 
-- `/`：前台咖啡豆資料卡，直接讀 Firebase Firestore
-- `/admin/`：後台登入、新增、編輯、刪除咖啡豆
-- Firebase Auth：後台登入
-- Firestore：儲存 `coffee_beans`
-- Quick Import：規則解析、CSV 匯入、AI 解析
+- 前台仍保留 receipt 視覺，但不再照 Song Receipt 的情緒分組。
+- 只顯示 Firestore / 後台欄位裡實際存在的資料。
+- 不自動產生風味百分比、色彩語言、人格、情緒、故事或主觀分析。
+- AI 功能只作為「來源欄位抽取」，不做咖啡數據判斷。
+- 若來源沒有提供欄位，前台就不顯示該區塊。
 
 ## Vercel 設定
 
-Framework Preset 選 `Other`。
+Framework Preset：Other  
+Build Command：留空  
+Output Directory：`.`  
+Install Command：留空
 
-| 欄位 | 值 |
-|---|---|
-| Build Command | 留空 |
-| Output Directory | `.` |
-| Install Command | 留空 |
+## 必填環境變數
 
-## Firebase 環境變數
-
-到 Vercel → Project → Settings → Environment Variables 新增：
+請在 Vercel → Project → Settings → Environment Variables 設定：
 
 ```txt
 FIREBASE_API_KEY
@@ -32,23 +29,31 @@ FIREBASE_APP_ID
 FIREBASE_MEASUREMENT_ID
 ```
 
-## AI 解析環境變數
+## 可選：OpenAI 欄位抽取
 
-若要使用 `/admin/` 裡的 AI 解析功能，另外新增：
+如果要使用 `/admin/` 的 AI 抽取功能，另外設定：
 
 ```txt
 OPENAI_API_KEY
-```
-
-可選：
-
-```txt
 OPENAI_MODEL=gpt-4.1-mini
 AI_PARSE_MAX_CHARS=12000
 ```
 
-`OPENAI_API_KEY` 只放在 Vercel Environment Variables，不要放進 GitHub。
-AI 解析由 `/api/ai-parse-bean` 這個 Vercel serverless function 呼叫 OpenAI API，前端不會直接看到你的 API key。
+OpenAI key 只放在 Vercel Environment Variables，不要放 GitHub。
+
+## Firestore Collection
+
+預設 collection：
+
+```txt
+coffee_beans
+```
+
+前台只讀取：
+
+```txt
+published == true
+```
 
 ## Firestore Rules 範例
 
@@ -71,13 +76,22 @@ service cloud.firestore {
 }
 ```
 
-## 使用流程
+## 使用方式
 
-1. 登入 `/admin/`
-2. 貼上商品頁文字或網址
-3. 可選「規則解析」或「AI 解析」
-4. 先看預覽
-5. 套用到表單後人工確認
-6. 勾選 Published 才會公開顯示在前台
+1. 打開 `/admin/`
+2. 登入 Firebase Authentication 管理員帳號
+3. 貼上來源文字或 CSV
+4. 使用「AI 抽取」或「規則抽取」產生草稿
+5. 人工確認欄位
+6. 勾選 Published
+7. 儲存到 Firestore
+8. 前台重新整理後顯示資料
 
-AI 解析會盡量只根據你提供的來源文字整理資料；缺少的欄位會留空，不會自動公開。
+## v10 重要差異
+
+- 前台 receipt 版面改成「依資料欄位動態顯示」。
+- 移除色彩語言、情緒標籤、人格描述、百分比長條圖。
+- 「官方風味描述」只呈現來源或後台填寫的 tasting notes。
+- 「杯測 / 感官數據」只顯示明確填入的數值，不轉換成百分比。
+- AI schema 不包含酸質、甜感、香氣、醇厚度等主觀評分欄位。
+- URL fallback 不再塞入估算地圖座標。

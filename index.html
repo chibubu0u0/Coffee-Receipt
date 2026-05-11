@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Coffee Receipt Studio</title>
-    <meta name="description" content="Coffee bean receipt card powered by Firebase Firestore." />
+    <meta name="description" content="Source-based coffee bean receipt card powered by Firebase Firestore." />
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body class="receipt-page">
+  <body class="receipt-page factual-mode">
     <header class="topbar">
       <div>
         <p class="eyebrow">Coffee Receipt Studio</p>
-        <h1>咖啡豆收據</h1>
+        <h1>咖啡豆資料收據</h1>
       </div>
       <a class="admin-link" href="/admin/">Admin</a>
     </header>
@@ -28,95 +28,23 @@
         <p>請到 <a href="/admin/">/admin</a> 登入後新增資料，並將 published 設為 true。</p>
       </section>
 
-      <article id="beanCard" class="receipt" hidden>
+      <article id="beanCard" class="receipt factual-receipt" hidden>
         <section class="receipt-head">
-          <h2>咖啡收據</h2>
-          <p class="receipt-subtitle">AI ORIGIN CHECKOUT</p>
+          <h2>咖啡豆資料收據</h2>
+          <p class="receipt-subtitle">SOURCE DATA RECEIPT</p>
           <h3 id="beanName">Coffee Bean</h3>
           <p id="beanProducer">Producer</p>
           <div id="scorePill" class="receipt-score" hidden>
             <span id="cuppingScore">--</span>
             <small>CUPPING</small>
           </div>
+          <div id="heroFacts" class="hero-facts"></div>
         </section>
 
-        <section class="receipt-section section-reading">
-          <div class="section-line">
-            <span>產地解讀</span>
-            <span>01</span>
-          </div>
-          <p id="originReading" class="receipt-body"></p>
-          <h4 id="receiptTagline"></h4>
-        </section>
-
-        <section class="receipt-section">
-          <div class="section-line">
-            <span>風味標籤</span>
-            <span>02</span>
-          </div>
-          <div id="flavorTags" class="flavor-tags"></div>
-        </section>
-
-        <section class="receipt-section">
-          <div class="section-line">
-            <span>色彩語言</span>
-            <span>03</span>
-          </div>
-          <div id="colorPalette" class="palette-list"></div>
-        </section>
-
-        <section class="receipt-section">
-          <div class="section-line">
-            <span>產地輪廓</span>
-            <span>04</span>
-          </div>
-          <div id="mapWrap" class="receipt-map"></div>
-          <div id="originCurve" class="origin-curve"></div>
-          <p id="mapCaption" class="tiny-text"></p>
-          <div class="micro-meta" id="microMeta"></div>
-        </section>
-
-        <section class="receipt-section">
-          <div class="section-line">
-            <span>咖啡具現化</span>
-            <span>05</span>
-          </div>
-          <ol id="coffeeSymbols" class="symbol-list"></ol>
-        </section>
-
-        <section class="receipt-section">
-          <div class="section-line">
-            <span>風味帳單</span>
-            <span>06</span>
-          </div>
-          <table class="ledger-table">
-            <thead>
-              <tr><th>項目</th><th>數量</th><th>強度</th></tr>
-            </thead>
-            <tbody id="flavorLedger"></tbody>
-          </table>
-          <div class="barcode" aria-hidden="true"></div>
-          <div class="overall-vibe">
-            <span>整體氣圖</span>
-            <strong id="overallVibe">Origin Breeze</strong>
-            <p id="overallNote">以真實資料為基礎產生的摘要。</p>
-          </div>
-        </section>
-
-        <section class="receipt-section source-section">
-          <div class="section-line">
-            <span>資料來源</span>
-            <span>07</span>
-          </div>
-          <p id="sourceText" class="tiny-text"></p>
-          <div class="qr-row">
-            <img id="qrImage" alt="QR Code" />
-            <a id="shareLink" href="#">開啟此資料卡</a>
-          </div>
-        </section>
+        <div id="receiptSections"></div>
 
         <footer class="receipt-footer">
-          <p>謝謝賞味</p>
+          <p>資料只依來源與後台欄位呈現</p>
         </footer>
       </article>
     </main>

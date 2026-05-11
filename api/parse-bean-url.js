@@ -28,12 +28,14 @@ function normalizeNumber(value) {
 }
 
 function collectFlavorNotes(text) {
-  const candidates = [
-    'jasmine','bergamot','tangerine','mandarin','white peach','peach','guava','sherbet','lemongrass','pineapple','raspberry','citrus','honey',
-    'orange','lemon','lime','floral','super floral','tea','black tea','green tea','chocolate','cacao','caramel','brown sugar','vanilla','winey','stone fruit','berries','strawberry','blueberry'
-  ];
-  const lower = String(text || '').toLowerCase();
-  return candidates.filter(item => lower.includes(item.toLowerCase())).slice(0, 14);
+  const source = String(text || '').replace(/\u00a0/g, ' ');
+  const match = source.match(/(?:flavou?r notes?|tasting notes?|official flavou?r|cup notes?)\s*[:：]\s*([^\n\r.。]{3,500})/i);
+  if (!match) return [];
+  return match[1]
+    .split(/[,;，、|]/)
+    .map(item => item.trim())
+    .filter(Boolean)
+    .slice(0, 24);
 }
 
 function findFirst(text, patterns) {
@@ -77,8 +79,8 @@ function parseFromText(text, sourceUrl) {
     bean.country = 'Panama';
   }
   if (/canvas of terroir/i.test(text) || /canvas-of-terroir/i.test(sourceUrl)) bean.auctionTheme = 'Canvas of Terroir';
-  if (/geisha washed/i.test(text) || /^GW/i.test(bean.lotNumber || '')) bean.category = 'Geisha Washed';
-  if (/geisha natural/i.test(text) || /^GN/i.test(bean.lotNumber || '')) bean.category = 'Geisha Natural';
+  if (/geisha washed/i.test(text)) bean.category = 'Geisha Washed';
+  if (/geisha natural/i.test(text)) bean.category = 'Geisha Natural';
 
   if (/geisha/i.test(text)) bean.variety = 'Geisha';
   if (/washed/i.test(text)) bean.process = 'Washed';
@@ -110,16 +112,6 @@ function parseFromText(text, sourceUrl) {
 
   if (/cool temperature/i.test(text) || /cold-temperature|cold temperature/i.test(text)) {
     bean.processNote = 'Cool Temperature Washed Fermentation with Climate Controlled Drying';
-  }
-  if (/peterson family/i.test(text) || /2004/i.test(text)) {
-    bean.storyProducer = 'The source mentions the Peterson family and Hacienda La Esmeralda’s role in bringing the Geisha varietal to global specialty coffee attention.';
-  }
-
-  if (bean.region === 'Cañas Verdes') {
-    bean.latitude = 8.761466;
-    bean.longitude = -82.49159;
-    bean.mapAccuracy = 'region';
-    bean.sourcePersonal = 'Map coordinates are region-level approximation for Cañas Verdes / Boquete, not exact farm coordinates.';
   }
 
   if (bean.name && !bean.slug) bean.slug = slugify(bean.name);
@@ -154,14 +146,10 @@ function bestOfPanamaKnownFallback(url) {
     winningBidder: 'Julith Coffee',
     boxes: 2,
     weight: 20,
-    latitude: 8.761466,
-    longitude: -82.49159,
     mapAccuracy: 'region',
     processNote: 'Cool Temperature Washed Fermentation with Climate Controlled Drying',
-    storyProducer: 'Hacienda La Esmeralda is associated with the Peterson family and the global rise of Panamanian Geisha coffee. Please verify this field against the source before publishing.',
     sourceUrl: url,
     sourceOfficial: 'Best of Panama 2025 Auction product page',
-    sourcePersonal: 'Fallback template for product 3981. Map coordinates are region-level approximation for Cañas Verdes / Boquete, not exact farm coordinates.',
     published: false
   };
 }
@@ -197,7 +185,7 @@ export default async function handler(req, res) {
     const fallback = bestOfPanamaKnownFallback(url.toString());
     if (fallback && (!bean.name || Object.keys(bean).length < 8)) {
       bean = fallback;
-      note = 'Used Best of Panama product 3981 fallback draft because the auction page may be dynamically rendered. Please review before saving.';
+      note = 'Used a source-field fallback draft for Best of Panama product 3981 because the auction page may be dynamically rendered. Please review source fields before saving.';
     }
 
     if (!bean.name && fallback) bean = fallback;

@@ -35,7 +35,23 @@ function cleanupBean(bean = {}) {
   });
   if (!cleaned.slug && cleaned.name) cleaned.slug = slugify(cleaned.name);
   if (cleaned.published === undefined) cleaned.published = false;
+
+  // v10 pure extraction mode: AI import must not create sensory ratings, system tags, stories, or approximated map coordinates.
+  // These fields can still be filled manually in /admin from an actual source/cupping sheet.
+  [
+    'acidityScore',
+    'sweetnessScore',
+    'bitternessScore',
+    'bodyScore',
+    'aromaScore',
+    'aftertasteScore',
+    'fermentationScore',
+    'cleanScore',
+    'tags'
+  ].forEach(key => delete cleaned[key]);
+
   cleaned.aiParsed = true;
+  cleaned.factOnlyImport = true;
   return cleaned;
 }
 
@@ -77,15 +93,6 @@ const beanProperties = {
   weight: { type: ['number', 'null'] },
   officialFlavor: { type: ['string', 'null'] },
   flavorNotes: { type: 'array', items: { type: 'string' } },
-  tags: { type: 'array', items: { type: 'string' } },
-  acidityScore: { type: ['number', 'null'] },
-  sweetnessScore: { type: ['number', 'null'] },
-  bitternessScore: { type: ['number', 'null'] },
-  bodyScore: { type: ['number', 'null'] },
-  aromaScore: { type: ['number', 'null'] },
-  aftertasteScore: { type: ['number', 'null'] },
-  fermentationScore: { type: ['number', 'null'] },
-  cleanScore: { type: ['number', 'null'] },
   latitude: { type: ['number', 'null'] },
   longitude: { type: ['number', 'null'] },
   mapAccuracy: { type: ['string', 'null'], enum: ['country', 'region', 'subregion', 'farm', 'unverified', null] },
@@ -94,14 +101,11 @@ const beanProperties = {
   brewTemp: { type: ['string', 'null'] },
   grind: { type: ['string', 'null'] },
   brewTime: { type: ['string', 'null'] },
-  storyOrigin: { type: ['string', 'null'] },
-  storyProducer: { type: ['string', 'null'] },
   processNote: { type: ['string', 'null'] },
   sourceUrl: { type: ['string', 'null'] },
   sourceOfficial: { type: ['string', 'null'] },
   sourceCupping: { type: ['string', 'null'] },
   sourcePersonal: { type: ['string', 'null'] },
-  aiNotes: { type: ['string', 'null'] },
   confidence: { type: ['number', 'null'] }
 };
 
@@ -155,7 +159,6 @@ function knownSourceTextForUrl(rawUrl) {
       'Winning bid price: 30204 USD/kg. Winning bidder: Julith Coffee.',
       'Flavor notes: Super floral, tangerine, mandarin, white peach, guava, sherbet, jasmine, lemongrass, bergamot, pineapple, raspberry, citrus, honey, long aftertaste.',
       'Process note: Cool Temperature Washed Fermentation with Climate Controlled Drying.',
-      'Map note: Cañas Verdes / Boquete coordinates are region-level approximation, not exact farm coordinates.',
       'Source URL: ' + rawUrl
     ].join('\n');
   } catch {
@@ -187,7 +190,7 @@ export default async function handler(req, res) {
       sourceText = await fetchUrlText(sourceUrl);
       const fallbackText = knownSourceTextForUrl(sourceUrl);
       // Some auction pages are rendered client-side and return very little useful HTML to serverless fetch.
-      // For the user's first Best of Panama test URL, use a reviewable source-text fallback so AI parsing can be tested.
+      // For the user's first Best of Panama test URL, use a reviewable source-text fallback so source-field extraction can be tested.
       if (fallbackText && (!sourceText || sourceText.length < 500 || !/Hacienda|Geisha|Cañas|Canas|GW-01/i.test(sourceText))) {
         sourceText = fallbackText;
       }
@@ -195,7 +198,7 @@ export default async function handler(req, res) {
 
     if (!sourceText || sourceText.length < 40) {
       return res.status(400).json({
-        error: 'Not enough source text to parse. Try copying the visible product text and use AI text parsing.'
+        error: 'Not enough source text to extract. Try copying the visible product text and use AI text extraction.'
       });
     }
 
@@ -217,14 +220,17 @@ export default async function handler(req, res) {
           {
             role: 'system',
             content: [
-              'You extract coffee bean data into a CMS import schema.',
-              'Use only the provided source text and source URL.',
-              'Do not invent farm coordinates, stories, scores, flavors, bidders, prices, or producer facts.',
-              'If a field is not explicitly supported by the source, use null or an empty array.',
-              'If you infer something from a clear code such as GW meaning Geisha Washed, put that inference in aiNotes.',
-              'For mapAccuracy, only use farm/subregion/region/country when the source provides that specificity; otherwise use unverified.',
+              'You are a strict data-extraction tool for a coffee bean CMS.',
+              'PURE EXTRACTION MODE: use only text that appears in the provided source. Do not analyze, score, summarize creatively, classify, or infer.',
+              'If a field is not explicitly written in the source text, return null or an empty array.',
+              'Do not generate mood, personality, color palette, percentage bars, sensory intensity, or tasting scores.',
+              'Do not create acidity/sweetness/body/aroma/aftertaste values; those fields are intentionally not part of this schema.',
+              'Only extract cuppingScore when the source explicitly provides a total score or points value.',
+              'Only extract officialFlavor and flavorNotes from source-provided tasting notes; preserve the source wording and do not add synonyms.',
+              'Do not estimate latitude or longitude. Only fill coordinates if the source explicitly provides them.',
+              'For mapAccuracy, only fill a value if the source states a country/region/subregion/farm-level location; otherwise use unverified.',
               'Set published to false by default so the human can review before publishing.',
-              'Keep story fields factual, short, and source-grounded.'
+              'Do not fill story fields or write narrative explanations; this is not a content generation task.'
             ].join(' ')
           },
           { role: 'user', content: prompt }
@@ -254,19 +260,19 @@ export default async function handler(req, res) {
 
     if (!beans.length) {
       return res.status(422).json({
-        error: 'AI could not identify a coffee bean record from the provided source.',
+        error: 'AI could not extract a coffee bean record from the provided source.',
         note: parsed.notes || ''
       });
     }
 
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({
-      message: 'AI parsing complete.',
+      message: 'AI extraction complete.',
       note: parsed.notes || 'Please review all AI-extracted fields before saving.',
       model,
       beans
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'AI parsing failed.' });
+    return res.status(500).json({ error: error.message || 'AI extraction failed.' });
   }
 }
