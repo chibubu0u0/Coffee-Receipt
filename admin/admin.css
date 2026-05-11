@@ -59,11 +59,14 @@ body.admin-authenticated main { min-height: auto; display: block; }
 
 .quick-import-card { grid-column: 1 / -1; }
 .quick-import-head { display: flex; justify-content: space-between; gap: 18px; align-items: start; }
-.quick-import-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.quick-import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 18px; }
 .quick-box { border: 1px solid var(--line); background: rgba(255, 248, 237, 0.72); border-radius: 22px; padding: 18px; display: grid; gap: 12px; }
 .quick-box h3 { margin: 0; }
 .quick-box p { margin: 0; }
 .quick-box button { justify-self: start; }
+.ai-quick-box { background: linear-gradient(135deg, rgba(255, 248, 237, 0.92), rgba(237, 222, 202, 0.72)); }
+.ai-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
 .quick-preview-wrap { margin-top: 18px; display: grid; gap: 14px; }
 .quick-preview-top { display: flex; justify-content: space-between; gap: 14px; align-items: center; border-top: 1px solid var(--line); padding-top: 18px; }
 .quick-preview-top h3 { margin: 0; }
@@ -82,4 +85,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .quick-preview-top { display: grid; align-items: start; }
   .quick-preview-actions { justify-content: flex-start; }
   .preview-item dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* v7: Put import workflow at the top and make the AI parser more prominent. */
+.quick-import-card { order: -10; }
+.primary-import-box { border-color: rgba(93, 53, 31, 0.38); box-shadow: 0 16px 40px rgba(93, 53, 31, 0.10); }
+.text-import-box { grid-column: span 2; }
+@media (max-width: 1020px) {
+  .text-import-box { grid-column: auto; }
 }

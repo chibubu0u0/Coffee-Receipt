@@ -29,6 +29,62 @@
       </section>
 
       <section id="adminPanel" class="admin-layout" hidden>
+        <section class="card quick-import-card">
+          <div class="quick-import-head">
+            <div>
+              <p class="eyebrow">Quick Import</p>
+              <h2>快速導入資料</h2>
+              <p class="muted">貼上網址、頁面文字或 CSV，先產生欄位預覽，再套用到表單或直接寫入 Firestore。建議先確認資料來源與地圖精準度，避免無中生有。</p>
+            </div>
+          </div>
+
+          <div class="quick-import-grid">
+            <div class="quick-box ai-quick-box primary-import-box">
+              <h3>1. AI 解析</h3>
+              <p class="muted">建議先貼「頁面文字」再按 AI 解析文字，動態網站會比較穩。會使用 Vercel 裡的 OPENAI_API_KEY；AI 只產生草稿，預設不公開。</p>
+              <div class="ai-actions">
+                <button id="aiParseTextBtn" type="button">AI 解析文字</button>
+                <button id="aiParseUrlBtn" type="button" class="secondary">AI 解析網址</button>
+              </div>
+            </div>
+
+            <div class="quick-box">
+              <h3>2. 貼網址解析</h3>
+              <p class="muted">適合 Best of Panama / 烘豆商商品頁。若網站是動態頁，系統會盡量讀取公開 HTML，並保留來源網址。</p>
+              <label>URL<input id="quickUrl" type="url" placeholder="https://app.bestofpanama.auction/auction/canvas-of-terroir?product=3981" /></label>
+              <button id="parseUrlBtn" type="button">規則解析網址</button>
+            </div>
+
+            <div class="quick-box text-import-box">
+              <h3>3. 貼頁面文字</h3>
+              <p class="muted">從商品頁複製公開文字貼上來，AI / 規則解析都會優先使用這裡的內容。</p>
+              <label>頁面文字<textarea id="quickText" rows="7" placeholder="貼上咖啡豆頁面的公開文字..."></textarea></label>
+              <button id="parseTextBtn" type="button" class="secondary">規則解析文字</button>
+            </div>
+
+            <div class="quick-box">
+              <h3>4. 貼 CSV 批量解析</h3>
+              <p class="muted">第一列放欄位名稱，例如 name,country,region,process,cuppingScore,published。</p>
+              <label>CSV 文字<textarea id="quickCsv" rows="7" placeholder="name,slug,country,region,process,published
+Panama Geisha Demo,panama-geisha-demo,Panama,Boquete,Washed,true"></textarea></label>
+              <button id="parseCsvTextBtn" type="button">解析 CSV</button>
+            </div>
+          </div>
+
+          <div class="quick-preview-wrap">
+            <div class="quick-preview-top">
+              <h3>預覽</h3>
+              <div class="quick-preview-actions">
+                <button id="applyPreviewBtn" type="button" class="secondary" disabled>套用第一筆到表單</button>
+                <button id="savePreviewBtn" type="button" disabled>儲存第一筆</button>
+                <button id="saveAllPreviewBtn" type="button" class="secondary" disabled>全部儲存</button>
+              </div>
+            </div>
+            <pre id="quickImportLog" class="import-log">尚未解析資料。</pre>
+            <div id="quickPreview" class="quick-preview"></div>
+          </div>
+        </section>
+
         <aside class="card sidebar">
           <div class="admin-actions">
             <button id="newBeanBtn" type="button">新增咖啡豆</button>
@@ -148,62 +204,6 @@
               <button id="resetBtn" type="button" class="secondary">清空表單</button>
             </div>
           </form>
-        </section>
-
-        <section class="card quick-import-card">
-          <div class="quick-import-head">
-            <div>
-              <p class="eyebrow">Quick Import</p>
-              <h2>快速導入資料</h2>
-              <p class="muted">貼上網址、頁面文字或 CSV，先產生欄位預覽，再套用到表單或直接寫入 Firestore。建議先確認資料來源與地圖精準度，避免無中生有。</p>
-            </div>
-          </div>
-
-          <div class="quick-import-grid">
-            <div class="quick-box">
-              <h3>1. 貼網址解析</h3>
-              <p class="muted">適合 Best of Panama / 烘豆商商品頁。若網站是動態頁，系統會盡量讀取公開 HTML，並保留來源網址。</p>
-              <label>URL<input id="quickUrl" type="url" placeholder="https://app.bestofpanama.auction/auction/canvas-of-terroir?product=3981" /></label>
-              <button id="parseUrlBtn" type="button">解析網址</button>
-            </div>
-
-            <div class="quick-box">
-              <h3>2. 貼頁面文字解析</h3>
-              <p class="muted">你可以從商品頁複製公開文字貼上來，系統會抓取名稱、產區、品種、處理法、分數、風味等欄位。</p>
-              <label>頁面文字<textarea id="quickText" rows="7" placeholder="貼上咖啡豆頁面的公開文字..."></textarea></label>
-              <button id="parseTextBtn" type="button">解析文字</button>
-            </div>
-
-            <div class="quick-box ai-quick-box">
-              <h3>3. AI 解析</h3>
-              <p class="muted">會使用 Vercel 裡的 OPENAI_API_KEY。建議先貼頁面文字；網址解析可能受動態頁限制。AI 只產生草稿，預設不公開。</p>
-              <div class="ai-actions">
-                <button id="aiParseUrlBtn" type="button" class="secondary">AI 解析網址</button>
-                <button id="aiParseTextBtn" type="button">AI 解析文字</button>
-              </div>
-            </div>
-
-            <div class="quick-box">
-              <h3>4. 貼 CSV 批量解析</h3>
-              <p class="muted">第一列放欄位名稱，例如 name,country,region,process,cuppingScore,published。</p>
-              <label>CSV 文字<textarea id="quickCsv" rows="7" placeholder="name,slug,country,region,process,published
-Panama Geisha Demo,panama-geisha-demo,Panama,Boquete,Washed,true"></textarea></label>
-              <button id="parseCsvTextBtn" type="button">解析 CSV</button>
-            </div>
-          </div>
-
-          <div class="quick-preview-wrap">
-            <div class="quick-preview-top">
-              <h3>預覽</h3>
-              <div class="quick-preview-actions">
-                <button id="applyPreviewBtn" type="button" class="secondary" disabled>套用第一筆到表單</button>
-                <button id="savePreviewBtn" type="button" disabled>儲存第一筆</button>
-                <button id="saveAllPreviewBtn" type="button" class="secondary" disabled>全部儲存</button>
-              </div>
-            </div>
-            <pre id="quickImportLog" class="import-log">尚未解析資料。</pre>
-            <div id="quickPreview" class="quick-preview"></div>
-          </div>
         </section>
 
         <section class="card import-card">

@@ -52,6 +52,8 @@ const els = {
   parseUrlBtn: document.getElementById('parseUrlBtn'),
   quickText: document.getElementById('quickText'),
   parseTextBtn: document.getElementById('parseTextBtn'),
+  aiParseUrlBtn: document.getElementById('aiParseUrlBtn'),
+  aiParseTextBtn: document.getElementById('aiParseTextBtn'),
   quickCsv: document.getElementById('quickCsv'),
   parseCsvTextBtn: document.getElementById('parseCsvTextBtn'),
   quickImportLog: document.getElementById('quickImportLog'),
@@ -222,6 +224,7 @@ function importStatus(message) {
 
 function quickStatus(message) {
   els.quickImportLog.textContent = message;
+  els.quickImportLog.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function renderBeanList() {
@@ -563,6 +566,7 @@ function setQuickPreview(beansInput, message) {
   quickPreviewBeans = beansInput.map(bean => normalizeBean(bean)).filter(bean => bean.name);
   quickStatus(message || `已解析 ${quickPreviewBeans.length} 筆資料。請確認後再儲存。`);
   renderQuickPreview();
+  document.querySelector('.quick-preview-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function applyPreviewBean(index = 0) {
@@ -603,6 +607,36 @@ async function saveAllPreviewBeans() {
   } catch (error) {
     console.error(error);
     quickStatus(`儲存失敗：${error.message}`);
+  }
+}
+
+
+async function aiParseImport(mode = 'text') {
+  const url = els.quickUrl.value.trim();
+  const text = els.quickText.value.trim();
+  if (mode === 'url' && !url) {
+    quickStatus('請先貼上 URL。');
+    return;
+  }
+  if (mode === 'text' && !text) {
+    quickStatus('請先貼上頁面文字。');
+    return;
+  }
+  try {
+    quickStatus(`AI 解析${mode === 'url' ? '網址' : '文字'}中…這會消耗你的 OpenAI API 額度。`);
+    const response = await fetch('/api/ai-parse-bean', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, url, text })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || data.detail?.message || 'AI 解析失敗。');
+    const parsed = (data.beans || []).map(bean => normalizeBean(bean)).filter(bean => bean.name);
+    if (!parsed.length) throw new Error('AI 沒有解析到可用的咖啡豆資料。');
+    setQuickPreview(parsed, `${data.message || 'AI 解析完成。'}\n${data.note || '請確認欄位後再儲存。'}\nModel: ${data.model || 'default'}`);
+  } catch (error) {
+    console.error(error);
+    quickStatus(`AI 解析失敗：${error.message}\n請確認 Vercel 已設定 OPENAI_API_KEY，或改用規則解析 / CSV 匯入。`);
   }
 }
 
@@ -672,6 +706,8 @@ function attachEventListeners() {
   els.downloadTemplateBtn.addEventListener('click', downloadCSVTemplate);
   els.parseUrlBtn.addEventListener('click', parseUrlImport);
   els.parseTextBtn.addEventListener('click', parseTextImport);
+  els.aiParseUrlBtn.addEventListener('click', () => aiParseImport('url'));
+  els.aiParseTextBtn.addEventListener('click', () => aiParseImport('text'));
   els.parseCsvTextBtn.addEventListener('click', parseCsvTextImport);
   els.applyPreviewBtn.addEventListener('click', () => applyPreviewBean(0));
   els.savePreviewBtn.addEventListener('click', () => savePreviewBean(0));
