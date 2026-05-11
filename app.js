@@ -169,31 +169,38 @@ function hexToRgba(hex, alpha) {
 
 function buildFusionBackground(colors) {
   const safeColors = (colors.length ? colors : DEFAULT_FLAVOR_COLOR.colors).filter(Boolean);
-  const count = safeColors.length;
-
-  const conicStops = safeColors.map((color, index) => {
-    const start = (index / count * 100).toFixed(2);
-    const end = ((index + 1) / count * 100).toFixed(2);
-    return `${hexToRgba(color, 0.68)} ${start}% ${end}%`;
-  }).join(', ');
 
   const gradients = [
-    // Soft edge mask: keeps the fusion compact and centered instead of filling the whole receipt.
-    'radial-gradient(ellipse at center, rgba(255,253,248,0) 0%, rgba(255,253,248,0) 48%, rgba(255,250,241,0.74) 74%, #fffaf2 100%)',
-    // A conic core ensures every source color appears at least once in the center.
-    `conic-gradient(from -38deg at 50% 50%, ${conicStops})`,
-    'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.36) 18%, rgba(255,255,255,0) 42%)'
+    // Paper edge mask keeps the color cloud compact and centered.
+    'radial-gradient(ellipse at center, rgba(255,253,248,0) 0%, rgba(255,253,248,0) 44%, rgba(255,250,241,0.42) 66%, #fffaf2 100%)',
+    // Warm milk base, so the watercolor bloom feels printed on receipt paper.
+    'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.22) 0%, rgba(255,248,235,0.28) 32%, rgba(255,253,248,0) 70%)'
   ];
 
   safeColors.forEach((color, index) => {
-    const angle = (index * 137.508) * Math.PI / 180;
-    const ring = index % 3;
-    const distance = 7 + ring * 5;
+    // Deterministic golden-angle placement, but kept close to the center so all colors blend together.
+    const angle = (index * 137.508 + (index % 4) * 23) * Math.PI / 180;
+    const distance = 3 + (index % 6) * 2.15;
+    const squeeze = 0.62 + (index % 3) * 0.08;
     const x = 50 + Math.cos(angle) * distance;
-    const y = 50 + Math.sin(angle) * distance * 0.72;
-    const radius = 16 + (index % 5) * 2;
-    gradients.push(`radial-gradient(circle at ${x.toFixed(1)}% ${y.toFixed(1)}%, ${hexToRgba(color, 0.76)} 0%, ${hexToRgba(color, 0.52)} ${radius}%, rgba(255,253,248,0) ${radius + 16}%)`);
+    const y = 50 + Math.sin(angle) * distance * squeeze;
+    const rx = 22 + (index % 5) * 4;
+    const ry = 18 + ((index + 2) % 5) * 3;
+    gradients.push(`radial-gradient(ellipse ${rx}% ${ry}% at ${x.toFixed(1)}% ${y.toFixed(1)}%, ${hexToRgba(color, 0.58)} 0%, ${hexToRgba(color, 0.38)} 30%, ${hexToRgba(color, 0.16)} 58%, rgba(255,253,248,0) 78%)`);
   });
+
+  // Add a few translucent off-center blooms from the same palette to make the edge less regular.
+  safeColors.forEach((color, index) => {
+    if (index % 2 !== 0) return;
+    const angle = (index * 91.7 + 41) * Math.PI / 180;
+    const distance = 11 + (index % 4) * 2.4;
+    const x = 50 + Math.cos(angle) * distance;
+    const y = 50 + Math.sin(angle) * distance * 0.55;
+    gradients.push(`radial-gradient(ellipse 18% 13% at ${x.toFixed(1)}% ${y.toFixed(1)}%, ${hexToRgba(color, 0.24)} 0%, ${hexToRgba(color, 0.12)} 48%, rgba(255,253,248,0) 82%)`);
+  });
+
+  // Thin soft paper veil on top for a naturally faded, bleeding look.
+  gradients.push('radial-gradient(ellipse at center, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0) 76%)');
 
   return gradients.join(', ');
 }
@@ -210,7 +217,7 @@ function renderFlavorColorField(notes) {
   return `
     <div class="flavor-color-visual" aria-label="依來源 tasting notes 產生的色彩視覺">
       <div class="flavor-color-field" style="background-image: ${background};"></div>
-      <p class="tiny-text">色彩只依來源 tasting notes 的詞彙做視覺對應，不代表酸甜苦等數據，也不會自動評分。</p>
+      <p class="tiny-text">色彩只依來源 tasting notes 的詞彙做視覺對應；以暈染方式呈現所有來源色，不代表酸甜苦等數據，也不會自動評分。</p>
       <div class="flavor-color-legend">
         ${colorInfos.map(info => `
           <div class="flavor-color-item">
