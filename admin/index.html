@@ -174,8 +174,17 @@
               <button id="parseTextBtn" type="button">解析文字</button>
             </div>
 
+            <div class="quick-box ai-quick-box">
+              <h3>3. AI 解析</h3>
+              <p class="muted">會使用 Vercel 裡的 OPENAI_API_KEY。建議先貼頁面文字；網址解析可能受動態頁限制。AI 只產生草稿，預設不公開。</p>
+              <div class="ai-actions">
+                <button id="aiParseUrlBtn" type="button" class="secondary">AI 解析網址</button>
+                <button id="aiParseTextBtn" type="button">AI 解析文字</button>
+              </div>
+            </div>
+
             <div class="quick-box">
-              <h3>3. 貼 CSV 批量解析</h3>
+              <h3>4. 貼 CSV 批量解析</h3>
               <p class="muted">第一列放欄位名稱，例如 name,country,region,process,cuppingScore,published。</p>
               <label>CSV 文字<textarea id="quickCsv" rows="7" placeholder="name,slug,country,region,process,published
 Panama Geisha Demo,panama-geisha-demo,Panama,Boquete,Washed,true"></textarea></label>
